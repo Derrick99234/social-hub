@@ -31,7 +31,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  status,
+  status: _status,
   onRefreshStatus,
   onProfilesUpdated,
 }) => {
@@ -392,6 +392,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {/* Avatar */}
                         <div className="relative flex-shrink-0">
                           {profile.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={profile.avatarUrl}
                               alt={profile.name}

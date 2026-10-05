@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, CheckCircle2, AlertCircle, Zap, ExternalLink, Code } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, Zap, Code } from 'lucide-react';
 import { Post, DispatchLog } from '@/types';
 import { PLATFORMS } from '@/lib/constants/platforms';
 

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Send, Calendar, CheckSquare, Square, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
-import { SocialProfile, PlatformId } from '@/types';
+import { X, Send, Calendar, CheckSquare, Square, CheckCircle2 } from 'lucide-react';
+import { SocialProfile } from '@/types';
 import { PLATFORMS } from '@/lib/constants/platforms';
 
 interface PublishProfilesModalProps {

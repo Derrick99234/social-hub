@@ -9,7 +9,6 @@ import { ContentQueue } from '@/components/queue/ContentQueue';
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { Post, Idea, ServiceHealthStatus } from '@/types';
-import { X } from 'lucide-react';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);

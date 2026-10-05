@@ -12,7 +12,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, idea: updated });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to update idea' }, { status: 500 });
   }
 }
@@ -27,7 +27,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, message: 'Idea deleted' });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to delete idea' }, { status: 500 });
   }
 }

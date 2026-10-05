@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Lock, Sparkles, ArrowRight, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (role: string) => void;

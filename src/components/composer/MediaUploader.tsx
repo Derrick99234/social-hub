@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Image, X, Plus, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
+import { UploadCloud, X, Plus, CheckCircle2, AlertCircle, Layers } from 'lucide-react';
 
 interface MediaUploaderProps {
   mediaUrls: string[];

@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Zap,
   X,
-  Users,
 } from 'lucide-react';
 import { PlatformId, Post, SocialProfile } from '@/types';
 import { MediaUploader } from './MediaUploader';

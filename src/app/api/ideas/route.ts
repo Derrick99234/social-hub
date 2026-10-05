@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const ideas = await repository.getIdeas();
     return NextResponse.json({ success: true, ideas });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch ideas' }, { status: 500 });
   }
 }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, idea }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to create idea' }, { status: 500 });
   }
 }

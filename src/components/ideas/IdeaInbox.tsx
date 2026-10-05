@@ -10,8 +10,6 @@ import {
   Tag,
   Clock,
   Trash2,
-  CheckCircle,
-  Archive,
   RefreshCw,
 } from 'lucide-react';
 import { Idea } from '@/types';

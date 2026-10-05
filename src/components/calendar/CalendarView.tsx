@@ -5,11 +5,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  Clock,
-  Sparkles,
   Plus,
 } from 'lucide-react';
-import { Post, PlatformId } from '@/types';
+import { Post } from '@/types';
 import { PLATFORMS } from '@/lib/constants/platforms';
 
 interface CalendarViewProps {

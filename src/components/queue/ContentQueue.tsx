@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {
   Search,
-  Filter,
   Calendar,
   Clock,
   Send,
@@ -12,12 +11,9 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
-  Image as ImageIcon,
-  Zap,
-  MoreVertical,
   Code,
 } from 'lucide-react';
-import { Post, PostStatus, PlatformId } from '@/types';
+import { Post, PostStatus } from '@/types';
 import { PLATFORMS } from '@/lib/constants/platforms';
 import { DispatchLogsModal } from './DispatchLogsModal';
 
@@ -34,7 +30,6 @@ export const ContentQueue: React.FC<ContentQueueProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PostStatus>('all');
-  const [platformFilter, setPlatformFilter] = useState<'all' | PlatformId>('all');
   const [selectedPostForLogs, setSelectedPostForLogs] = useState<Post | null>(null);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
@@ -80,9 +75,8 @@ export const ContentQueue: React.FC<ContentQueueProps> = ({
       (post.title && post.title.toLowerCase().includes(search.toLowerCase()));
 
     const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
-    const matchesPlatform = platformFilter === 'all' || post.channels.includes(platformFilter);
 
-    return matchesSearch && matchesStatus && matchesPlatform;
+    return matchesSearch && matchesStatus;
   });
 
   const getStatusBadge = (status: PostStatus) => {
