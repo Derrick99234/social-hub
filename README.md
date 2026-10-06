@@ -68,12 +68,12 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### 2. Login Credentials
-Enter the default passkey:
+Enter the role passkey for your role:
 ```
-Passkey: marketer123
-Role: Digital Marketer or Founder
+Founder Passkey:  founder@hub2026
+Marketer Passkey: marketer@hub2026
 ```
-*(You can customize this passkey in `.env.local` using `DASHBOARD_PASSKEY`)*
+*(You can customize these passkeys in `.env.local` using `FOUNDER_PASSKEY` and `MARKETER_PASSKEY`)*
 
 ---
 
@@ -82,8 +82,9 @@ Role: Digital Marketer or Founder
 Copy `.env.example` to `.env.local` and add your real keys:
 
 ```env
-# 🔐 Access Passkey
-DASHBOARD_PASSKEY=marketer123
+# 🔐 Access Passkeys
+FOUNDER_PASSKEY=founder@hub2026
+MARKETER_PASSKEY=marketer@hub2026
 
 # 🐦 Typefully API (X / Twitter & Threads)
 TYPEFULLY_API_KEY=your_typefully_api_key_here

@@ -5,12 +5,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const { passkey, role } = body;
 
-    const configuredPasskey = process.env.DASHBOARD_PASSKEY || 'marketer123';
+    const inputKey = typeof passkey === 'string' ? passkey.trim() : '';
 
-    // Allow empty during initial dev or if matching configured passkey
-    const isValid = passkey && passkey.trim() === configuredPasskey.trim();
+    if (!inputKey) {
+      return NextResponse.json(
+        { error: 'Please enter your access passkey.' },
+        { status: 400 }
+      );
+    }
 
-    if (!isValid) {
+    const founderPasskey = (process.env.FOUNDER_PASSKEY || 'founder@hub2026').trim();
+    const marketerPasskey = (process.env.MARKETER_PASSKEY || 'marketer@hub2026').trim();
+    const legacyPasskey = process.env.DASHBOARD_PASSKEY?.trim();
+
+    let resolvedRole: 'founder' | 'marketer' | null = null;
+
+    if (inputKey === founderPasskey) {
+      resolvedRole = 'founder';
+    } else if (inputKey === marketerPasskey) {
+      resolvedRole = 'marketer';
+    } else if (legacyPasskey && inputKey === legacyPasskey) {
+      resolvedRole = role === 'founder' ? 'founder' : 'marketer';
+    }
+
+    if (!resolvedRole) {
       return NextResponse.json(
         { error: 'Invalid Passkey / PIN. Please check your credentials.' },
         { status: 401 }
@@ -20,7 +38,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       message: 'Authenticated successfully',
-      role: role || 'marketer',
+      role: resolvedRole,
     });
 
     // Set secure cookie
@@ -32,7 +50,7 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 30, // 30 days
     });
 
-    response.cookies.set('social_hub_role', role || 'marketer', {
+    response.cookies.set('social_hub_role', resolvedRole, {
       httpOnly: false, // Accessible by client UI for mode switcher
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

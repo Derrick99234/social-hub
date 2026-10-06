@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     authenticated: isAuthenticated,
     role: isAuthenticated ? role : null,
-    hasConfiguredPasskey: Boolean(process.env.DASHBOARD_PASSKEY),
+    hasConfiguredPasskey: Boolean(
+      process.env.FOUNDER_PASSKEY || process.env.MARKETER_PASSKEY || process.env.DASHBOARD_PASSKEY
+    ),
   });
 }

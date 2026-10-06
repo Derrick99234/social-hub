@@ -42,7 +42,9 @@ export async function GET() {
       channels: ['linkedin', 'instagram'],
     },
     auth: {
-      passkeyConfigured: Boolean(process.env.DASHBOARD_PASSKEY),
+      passkeyConfigured: Boolean(
+        process.env.FOUNDER_PASSKEY || process.env.MARKETER_PASSKEY || process.env.DASHBOARD_PASSKEY
+      ),
     },
   };
 

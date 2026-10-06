@@ -24,8 +24,9 @@ export async function GET() {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
     supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET || 'media',
-    dashboardPasskey: process.env.DASHBOARD_PASSKEY || 'marketer123',
+    founderPasskey: process.env.FOUNDER_PASSKEY || 'founder@hub2026',
+    marketerPasskey: process.env.MARKETER_PASSKEY || 'marketer@hub2026',
+    dashboardPasskey: process.env.DASHBOARD_PASSKEY || process.env.MARKETER_PASSKEY || 'marketer@hub2026',
   });
 }
 
@@ -72,6 +73,8 @@ export async function POST(request: NextRequest) {
     updateOrAppend('BUFFER_ACCESS_TOKEN', bufferTokens[0] || '');
     updateOrAppend('BUFFER_ACCESS_TOKENS', bufferTokens.join(','));
 
+    updateOrAppend('FOUNDER_PASSKEY', body.founderPasskey);
+    updateOrAppend('MARKETER_PASSKEY', body.marketerPasskey);
     updateOrAppend('DASHBOARD_PASSKEY', body.dashboardPasskey);
     updateOrAppend('NEXT_PUBLIC_SUPABASE_URL', body.supabaseUrl);
     updateOrAppend('NEXT_PUBLIC_SUPABASE_ANON_KEY', body.supabaseAnonKey);

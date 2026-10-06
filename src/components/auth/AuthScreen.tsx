@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, KeyRound } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (role: string) => void;
@@ -35,18 +35,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         throw new Error(data.error || 'Failed to authenticate');
       }
 
-      onSuccess(role);
+      onSuccess(data.role || role);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid passkey';
       setError(message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickDemoFill = () => {
-    setPasskey('marketer123');
-    setError(null);
   };
 
   return (
@@ -120,7 +115,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
                 type="password"
                 value={passkey}
                 onChange={(e) => setPasskey(e.target.value)}
-                placeholder="Enter secret passkey..."
+                placeholder={role === 'founder' ? 'Enter Founder passkey...' : 'Enter Marketer passkey...'}
                 autoFocus
                 className="w-full pl-10 pr-4 py-3 bg-slate-900/90 text-white placeholder-slate-500 rounded-xl border border-slate-700/80 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm"
               />
@@ -148,19 +143,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Quick Demo Helper */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
-          <p className="text-xs text-slate-400 mb-2">Testing or first time here?</p>
-          <button
-            type="button"
-            onClick={handleQuickDemoFill}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-all"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Fill Demo Passkey (<code className="font-mono text-[11px]">marketer123</code>)
-          </button>
-        </div>
       </div>
     </div>
   );
