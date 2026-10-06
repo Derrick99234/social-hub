@@ -254,23 +254,27 @@ export const ContentQueue: React.FC<ContentQueueProps> = ({
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
-                  {post.status !== 'published' && (
-                    <button
-                      type="button"
-                      onClick={() => handleInstantPublish(post)}
-                      disabled={isProcessing === post.id}
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/20 hover:border-blue-600 font-medium text-xs flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
-                      title="Post to selected channels immediately"
-                    >
-                      {isProcessing === post.id ? (
-                        <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Send className="w-3.5 h-3.5" />
-                      )}
-                      <span>Post Now</span>
-                    </button>
-                  )}
+                <div className="flex items-center justify-between md:justify-end gap-2 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-slate-800/60 flex-shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    {post.status !== 'published' && (
+                      <button
+                        type="button"
+                        onClick={() => handleInstantPublish(post)}
+                        disabled={isProcessing === post.id}
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/20 hover:border-blue-600 font-medium text-xs flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                        title="Post to selected channels immediately"
+                      >
+                        {isProcessing === post.id ? (
+                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                        <span>Post Now</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
 
                   <button
                     type="button"
@@ -290,14 +294,15 @@ export const ContentQueue: React.FC<ContentQueueProps> = ({
                     <Code className="w-4 h-4" />
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePost(post.id)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-all"
-                    title="Delete post"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePost(post.id)}
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-all"
+                      title="Delete post"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

@@ -191,7 +191,7 @@ export default function Home() {
       />
 
       {/* Main Content Workspace (Calendar is default landing) */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 md:pb-8">
         {currentTab === 'calendar' && (
           <CalendarView
             posts={posts}
@@ -220,8 +220,8 @@ export default function Home() {
 
       {/* Composer Modal Pop-Up */}
       {isComposerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
-          <div className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto p-1 sm:p-2 rounded-3xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-150">
+          <div className="relative w-full max-w-6xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-0 sm:p-2 rounded-2xl sm:rounded-3xl">
             <PostComposer
               initialPost={composerPost}
               onClose={() => setIsComposerOpen(false)}

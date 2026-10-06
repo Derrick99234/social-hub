@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Zap,
   X,
+  Eye,
+  Edit3,
 } from 'lucide-react';
 import { PlatformId, Post, SocialProfile } from '@/types';
 import { MediaUploader } from './MediaUploader';
@@ -49,6 +51,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   const [availableProfiles, setAvailableProfiles] = useState<SocialProfile[]>(DEFAULT_PROFILES);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
 
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error' | 'info';
@@ -230,10 +233,38 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
   return (
     <>
+      {/* Mobile Tab Switcher: Editor vs Live Preview */}
+      <div className="flex lg:hidden items-center p-1 bg-slate-900/90 rounded-xl border border-slate-800 mb-3 max-w-xs mx-auto text-xs">
+        <button
+          type="button"
+          onClick={() => setMobileTab('editor')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg font-semibold transition-all ${
+            mobileTab === 'editor'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+          <span>Editor</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('preview')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg font-semibold transition-all ${
+            mobileTab === 'preview'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>Preview</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: Composer Controls (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="glass-panel rounded-2xl border border-slate-800 p-6 shadow-2xl relative">
+        <div className={`lg:col-span-7 space-y-6 ${mobileTab === 'editor' ? 'block' : 'hidden lg:block'}`}>
+          <div className="glass-panel rounded-2xl border border-slate-800 p-4 sm:p-6 shadow-2xl relative">
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-800/80">
               <div>
@@ -444,12 +475,30 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Mobile Quick Preview Trigger */}
+              <button
+                type="button"
+                onClick={() => setMobileTab('preview')}
+                className="lg:hidden w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-indigo-400 hover:text-indigo-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all mt-3"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Preview Multi-Platform Render →</span>
+              </button>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Live Previews (5 cols) */}
-        <div className="lg:col-span-5 sticky top-6">
+        <div className={`lg:col-span-5 sticky top-6 space-y-3 ${mobileTab === 'preview' ? 'block' : 'hidden lg:block'}`}>
+          <button
+            type="button"
+            onClick={() => setMobileTab('editor')}
+            className="lg:hidden w-full py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>← Back to Post Editor</span>
+          </button>
           <LivePreview content={content} mediaUrls={mediaUrls} />
         </div>
       </div>

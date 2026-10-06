@@ -259,10 +259,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     bufferAccessTokens.some((t) => t && !t.includes('your_') && t.trim() !== '');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col glass-panel rounded-2xl shadow-2xl border border-slate-800 text-slate-100 overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="relative w-full max-w-3xl max-h-[96vh] sm:max-h-[90vh] flex flex-col glass-panel rounded-2xl shadow-2xl border border-slate-800 text-slate-100 overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-white tracking-tight">Settings</h3>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -280,7 +280,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Tab Navigation (2 Clean Tabs) */}
-        <div className="flex items-center gap-2 px-6 pt-3 border-b border-slate-800/80 bg-slate-900/30 text-xs font-medium">
+        <div className="flex items-center gap-2 px-4 sm:px-6 pt-3 border-b border-slate-800/80 bg-slate-900/30 text-xs font-medium">
           <button
             onClick={() => setActiveTab('profiles')}
             className={`flex items-center gap-2 pb-2.5 px-2 border-b-2 transition-all font-semibold ${

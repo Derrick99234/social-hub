@@ -51,7 +51,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
         <div className="absolute -bottom-[20%] right-[20%] w-[600px] h-[600px] rounded-full bg-indigo-600/15 blur-[140px]" />
       </div>
 
-      <div className="relative w-full max-w-md p-8 glass-panel rounded-2xl shadow-2xl border border-slate-800/80 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md p-6 sm:p-8 glass-panel rounded-2xl shadow-2xl border border-slate-800/80 animate-in fade-in zoom-in-95 duration-200 mx-2">
         {/* Header Icon */}
         <div className="flex justify-center mb-6">
           <div className="relative p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25">

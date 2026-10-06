@@ -97,54 +97,56 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </nav>
 
-          {/* Right: + New Post Pop-up Trigger, Role Switcher, Status & Profile */}
-          <div className="flex items-center gap-3">
-            {/* Pop-up Composer Trigger */}
+          {/* Right: + New Post Pop-up Trigger, Role Switcher, Settings & Logout */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Pop-up Composer Trigger (Desktop/Tablet) */}
             <button
               type="button"
               onClick={onOpenComposer}
-              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all"
+              className="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-blue-500/20 items-center gap-1.5 transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">New Post</span>
+              <span>New Post</span>
             </button>
 
-            {/* Role Switcher Pill */}
+            {/* Role Switcher Pill (Responsive) */}
             <div className="flex items-center p-0.5 bg-slate-900/90 rounded-lg border border-slate-800 text-xs">
               <button
                 type="button"
                 onClick={() => onChangeRole('founder')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   role === 'founder'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
                 title="Founder Mode: Quick ideas drop & review"
               >
-                👔 Founder
+                <span>👔</span>
+                <span className="hidden sm:inline ml-1">Founder</span>
               </button>
               <button
                 type="button"
                 onClick={() => onChangeRole('marketer')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   role === 'marketer'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
                 title="Marketer Mode: Full multi-platform scheduler"
               >
-                🚀 Marketer
+                <span>🚀</span>
+                <span className="hidden sm:inline ml-1">Marketer</span>
               </button>
             </div>
 
             {/* Settings Button */}
             <button
               onClick={onOpenSettings}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/90 hover:bg-slate-800 hover:text-white border border-slate-700/80 hover:border-slate-600 shadow-sm transition-all"
+              className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/90 hover:bg-slate-800 hover:text-white border border-slate-700/80 hover:border-slate-600 shadow-sm transition-all"
               title="Settings & API Keys"
             >
-              <Settings className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[11px] font-semibold">
+              <Settings className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-400" />
+              <span className="hidden sm:inline text-[11px] font-semibold">
                 Settings
               </span>
             </button>
@@ -159,50 +161,64 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Sub-Navigation Bar */}
-        <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-900 text-xs">
-          <button
-            onClick={() => onSelectTab('calendar')}
-            className={`flex items-center gap-1 py-1 px-2.5 rounded-md ${
-              currentTab === 'calendar' ? 'bg-blue-600 text-white' : 'text-slate-400'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Calendar</span>
-          </button>
-          <button
-            onClick={() => onSelectTab('ideas')}
-            className={`flex items-center gap-1 py-1 px-2.5 rounded-md relative ${
-              currentTab === 'ideas' ? 'bg-indigo-600 text-white' : 'text-slate-400'
-            }`}
-          >
-            <Lightbulb className="w-3.5 h-3.5" />
-            <span>Ideas</span>
+      {/* Mobile Bottom Navigation Bar (Fixed for Thumb Reachability) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-2 flex items-center justify-around text-xs shadow-2xl">
+        <button
+          onClick={() => onSelectTab('calendar')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+            currentTab === 'calendar' ? 'text-blue-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span className="text-[10px]">Calendar</span>
+        </button>
+
+        <button
+          onClick={() => onSelectTab('ideas')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl relative transition-all ${
+            currentTab === 'ideas' ? 'text-indigo-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div className="relative">
+            <Lightbulb className="w-4 h-4" />
             {unreadIdeasCount > 0 && (
-              <span className="w-4 h-4 flex items-center justify-center rounded-full text-[9px] bg-amber-400 text-slate-950 font-bold">
+              <span className="absolute -top-1 -right-2.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[9px] bg-amber-400 text-slate-950 font-bold">
                 {unreadIdeasCount}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => onSelectTab('queue')}
-            className={`flex items-center gap-1 py-1 px-2.5 rounded-md ${
-              currentTab === 'queue' ? 'bg-blue-600 text-white' : 'text-slate-400'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Queue</span>
-          </button>
-          <button
-            onClick={onOpenComposer}
-            className="flex items-center gap-1 py-1 px-2.5 rounded-md bg-blue-600 text-white font-medium"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New</span>
-          </button>
-        </div>
-      </div>
+          </div>
+          <span className="text-[10px]">Ideas</span>
+        </button>
+
+        {/* Center Floating Action Button for Mobile: + New Post */}
+        <button
+          onClick={onOpenComposer}
+          className="flex items-center justify-center w-11 h-11 -mt-4 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 text-white shadow-lg shadow-blue-500/40 border-2 border-slate-950 active:scale-95 transition-transform"
+          title="Create New Post"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={() => onSelectTab('queue')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+            currentTab === 'queue' ? 'text-blue-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span className="text-[10px]">Queue</span>
+        </button>
+
+        <button
+          onClick={onOpenSettings}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-200 transition-all"
+        >
+          <Settings className="w-4 h-4" />
+          <span className="text-[10px]">Settings</span>
+        </button>
+      </nav>
     </header>
   );
 };
