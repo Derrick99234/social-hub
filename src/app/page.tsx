@@ -11,6 +11,7 @@ import { SettingsModal } from '@/components/settings/SettingsModal';
 import { DispatchStatusModal, ChannelStatusItem } from '@/components/composer/DispatchStatusModal';
 import { PLATFORMS } from '@/lib/constants/platforms';
 import { Post, Idea, ServiceHealthStatus, SocialProfile } from '@/types';
+import { formatFriendlyErrorMessage } from '@/lib/utils/friendlyErrors';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -188,7 +189,8 @@ export default function Home() {
         (a, b) => new Date(b.dispatched_at).getTime() - new Date(a.dispatched_at).getTime()
       );
 
-      const seenKeys = new Set<string>();
+      const seenIds = new Set<string>();
+      const seenNames = new Set<string>();
 
       for (const log of sortedLogs) {
         // Resolve profileId if available
@@ -202,12 +204,6 @@ export default function Home() {
           }
         }
 
-        const dedupKey = pId ? `${log.channel}:${pId}` : log.channel;
-        if (seenKeys.has(dedupKey)) {
-          continue;
-        }
-        seenKeys.add(dedupKey);
-
         const matchedProfile = pId
           ? profiles.find((p) => p.id === pId)
           : profiles.find((p) => p.network === log.channel);
@@ -217,6 +213,17 @@ export default function Home() {
           (log.response_payload?.profileName as string) ||
           PLATFORMS[log.channel]?.name ||
           log.channel.toUpperCase();
+
+        const nameKey = `${log.channel}:${displayName.toLowerCase().trim()}`;
+        const idKey = pId ? `${log.channel}:${pId}` : null;
+
+        // Skip historical duplicates: if seen either by explicit ID or by display name on this channel
+        if ((idKey && seenIds.has(idKey)) || seenNames.has(nameKey)) {
+          continue;
+        }
+
+        if (idKey) seenIds.add(idKey);
+        seenNames.add(nameKey);
 
         const handle =
           matchedProfile?.handle ||
@@ -236,7 +243,7 @@ export default function Home() {
           avatarUrl,
           service: log.service as 'typefully' | 'buffer',
           status: log.status === 'success' || log.status === 'simulated' ? 'success' : 'failed',
-          error: log.error_message,
+          error: formatFriendlyErrorMessage(log.error_message),
           externalUrl: log.external_url,
           externalId: log.external_id,
         });

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Post, SocialProfile, PlatformId } from '@/types';
 import { PLATFORMS } from '@/lib/constants/platforms';
+import { formatFriendlyErrorMessage } from '@/lib/utils/friendlyErrors';
 
 export interface ChannelStatusItem {
   channel: PlatformId;
@@ -242,8 +243,11 @@ export const DispatchStatusModal: React.FC<DispatchStatusModalProps> = ({
 
                   {/* Failure message if any */}
                   {item.status === 'failed' && item.error && (
-                    <div className="text-[11px] text-rose-300/90 bg-rose-950/30 border border-rose-900/50 rounded-lg p-2 leading-relaxed">
-                      {item.error}
+                    <div className="text-[11px] text-rose-300 bg-rose-950/40 border border-rose-900/60 rounded-xl p-2.5 leading-relaxed flex items-start gap-2 shadow-sm">
+                      <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 font-medium">
+                        {formatFriendlyErrorMessage(item.error)}
+                      </div>
                     </div>
                   )}
                 </div>

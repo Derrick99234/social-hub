@@ -1,4 +1,6 @@
 import { SocialProfile } from '@/types';
+import { getAppSettings } from './settingsService';
+import { getSupabaseServerClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
 
@@ -14,22 +16,20 @@ export async function fetchLiveSocialProfiles(customKeys?: {
   typefullyKeys?: string[];
   bufferTokens?: string[];
 }): Promise<SocialProfile[]> {
+  const settings = await getAppSettings();
+
   let typefullyKeys: string[] = [];
   if (customKeys?.typefullyKeys && customKeys.typefullyKeys.length > 0) {
     typefullyKeys = customKeys.typefullyKeys;
-  } else if (process.env.TYPEFULLY_API_KEYS) {
-    typefullyKeys = process.env.TYPEFULLY_API_KEYS.split(',').map((k) => k.trim()).filter(Boolean);
-  } else if (process.env.TYPEFULLY_API_KEY) {
-    typefullyKeys = [process.env.TYPEFULLY_API_KEY.trim()];
+  } else if (settings.typefullyApiKeys && settings.typefullyApiKeys.length > 0) {
+    typefullyKeys = settings.typefullyApiKeys;
   }
 
   let bufferTokens: string[] = [];
   if (customKeys?.bufferTokens && customKeys.bufferTokens.length > 0) {
     bufferTokens = customKeys.bufferTokens;
-  } else if (process.env.BUFFER_ACCESS_TOKENS) {
-    bufferTokens = process.env.BUFFER_ACCESS_TOKENS.split(',').map((t) => t.trim()).filter(Boolean);
-  } else if (process.env.BUFFER_ACCESS_TOKEN) {
-    bufferTokens = [process.env.BUFFER_ACCESS_TOKEN.trim()];
+  } else if (settings.bufferAccessTokens && settings.bufferAccessTokens.length > 0) {
+    bufferTokens = settings.bufferAccessTokens;
   }
 
   const discoveredProfiles: SocialProfile[] = [];
@@ -183,6 +183,21 @@ export async function fetchLiveSocialProfiles(customKeys?: {
 
   // Update memory store
   global.__cachedProfiles = discoveredProfiles;
+
+  // Persist to Supabase Storage in 'media' bucket
+  const supabase = getSupabaseServerClient();
+  if (supabase && isSupabaseConfigured()) {
+    try {
+      await supabase.storage
+        .from('media')
+        .upload('config/connected_profiles.json', Buffer.from(JSON.stringify(discoveredProfiles, null, 2)), {
+          contentType: 'application/json',
+          upsert: true,
+        });
+    } catch (err) {
+      console.warn('Supabase storage profile upload warning:', err);
+    }
+  }
 
   // Persist to local JSON if possible
   try {

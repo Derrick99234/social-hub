@@ -1,5 +1,7 @@
 import { PlatformId } from '@/types';
 import { getCachedProfiles } from './profileSync';
+import { getBufferTokens, getTypefullyKeys } from './settingsService';
+import { formatFriendlyErrorMessage } from '@/lib/utils/friendlyErrors';
 
 interface DispatchOptions {
   postId: string;
@@ -30,10 +32,13 @@ export interface DispatchResult {
  * Resolves the appropriate Buffer token for a given channel/profile ID
  */
 async function getBufferTokenForChannel(channelId?: string): Promise<string> {
-  const allTokens = (process.env.BUFFER_ACCESS_TOKENS || process.env.BUFFER_ACCESS_TOKEN || '')
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
+  const dbTokens = await getBufferTokens();
+  const allTokens = dbTokens.length > 0
+    ? dbTokens
+    : (process.env.BUFFER_ACCESS_TOKENS || process.env.BUFFER_ACCESS_TOKEN || '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
 
   if (allTokens.length <= 1) return allTokens[0] || '';
   if (!channelId) return allTokens[0];
@@ -65,7 +70,8 @@ async function dispatchToTypefully(
   channels: PlatformId[] = ['twitter'],
   profileIds?: string[]
 ): Promise<DispatchResult[]> {
-  const apiKey = process.env.TYPEFULLY_API_KEY;
+  const dbKeys = await getTypefullyKeys();
+  const apiKey = dbKeys[0] || process.env.TYPEFULLY_API_KEY;
   const isSimulated = !apiKey || apiKey.includes('your_') || apiKey.trim() === '';
 
   const results: DispatchResult[] = [];
@@ -179,7 +185,7 @@ async function dispatchToTypefully(
           service: 'typefully',
           success: false,
           status: 'failed',
-          error: errorMessage,
+          error: formatFriendlyErrorMessage(errorMessage),
           payloadSent: payload,
           responseReceived: responseData,
         });
@@ -230,7 +236,7 @@ async function dispatchToTypefully(
         service: 'typefully',
         success: false,
         status: 'failed',
-        error: errorMessage,
+        error: formatFriendlyErrorMessage(errorMessage),
       });
     }
   }
@@ -419,7 +425,7 @@ async function dispatchToBuffer(
           service: 'buffer',
           success: false,
           status: 'failed',
-          error: errorMsg,
+          error: formatFriendlyErrorMessage(errorMsg),
           payloadSent: inputPayload,
           responseReceived: responseData,
         });
@@ -450,7 +456,7 @@ async function dispatchToBuffer(
           service: 'buffer',
           success: false,
           status: 'failed',
-          error: errorMsg,
+          error: formatFriendlyErrorMessage(errorMsg),
           payloadSent: inputPayload,
           responseReceived: responseData,
         });
@@ -466,7 +472,7 @@ async function dispatchToBuffer(
         service: 'buffer',
         success: false,
         status: 'failed',
-        error: errorMessage,
+        error: formatFriendlyErrorMessage(errorMessage),
       });
     }
   }

@@ -1,57 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { getAppSettings, saveAppSettings } from '@/lib/services/settingsService';
+import { fetchLiveSocialProfiles } from '@/lib/services/profileSync';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const typefullyKeys = process.env.TYPEFULLY_API_KEYS
-    ? process.env.TYPEFULLY_API_KEYS.split(',').map((s) => s.trim()).filter(Boolean)
-    : process.env.TYPEFULLY_API_KEY
-    ? [process.env.TYPEFULLY_API_KEY]
-    : [''];
+  try {
+    const settings = await getAppSettings();
 
-  const bufferTokens = process.env.BUFFER_ACCESS_TOKENS
-    ? process.env.BUFFER_ACCESS_TOKENS.split(',').map((s) => s.trim()).filter(Boolean)
-    : process.env.BUFFER_ACCESS_TOKEN
-    ? [process.env.BUFFER_ACCESS_TOKEN]
-    : [''];
-
-  return NextResponse.json({
-    typefullyApiKeys: typefullyKeys.length > 0 ? typefullyKeys : [''],
-    bufferAccessTokens: bufferTokens.length > 0 ? bufferTokens : [''],
-    // Backward compatibility fields
-    typefullyApiKey: process.env.TYPEFULLY_API_KEY || '',
-    bufferAccessToken: process.env.BUFFER_ACCESS_TOKEN || '',
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    founderPasskey: process.env.FOUNDER_PASSKEY || 'founder@hub2026',
-    marketerPasskey: process.env.MARKETER_PASSKEY || 'marketer@hub2026',
-    dashboardPasskey: process.env.DASHBOARD_PASSKEY || process.env.MARKETER_PASSKEY || 'marketer@hub2026',
-  });
+    return NextResponse.json({
+      typefullyApiKeys: settings.typefullyApiKeys.length > 0 ? settings.typefullyApiKeys : [''],
+      bufferAccessTokens: settings.bufferAccessTokens.length > 0 ? settings.bufferAccessTokens : [''],
+      typefullyApiKey: settings.typefullyApiKeys[0] || '',
+      bufferAccessToken: settings.bufferAccessTokens[0] || '',
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      supabaseBucket: process.env.SUPABASE_STORAGE_BUCKET || 'media',
+      founderPasskey: settings.founderPasskey || 'founder@hub2026',
+      marketerPasskey: settings.marketerPasskey || 'marketer@hub2026',
+      dashboardPasskey: settings.dashboardPasskey || 'marketer@hub2026',
+      updatedAt: settings.updatedAt,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to retrieve settings';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const envPath = path.join(process.cwd(), '.env.local');
 
-    let envContent = '';
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
-
-    const updateOrAppend = (key: string, value?: string) => {
-      if (value === undefined) return;
-      process.env[key] = value;
-      const regex = new RegExp(`^${key}=.*$`, 'm');
-      if (regex.test(envContent)) {
-        envContent = envContent.replace(regex, `${key}=${value}`);
-      } else {
-        envContent += `\n${key}=${value}`;
-      }
-    };
-
-    // Process Typefully Keys
+    // 1. Process Typefully Keys
     let typefullyKeys: string[] = [];
     if (Array.isArray(body.typefullyApiKeys)) {
       typefullyKeys = body.typefullyApiKeys.map((k: string) => k.trim()).filter(Boolean);
@@ -59,7 +40,7 @@ export async function POST(request: NextRequest) {
       typefullyKeys = [body.typefullyApiKey.trim()];
     }
 
-    // Process Buffer Tokens
+    // 2. Process Buffer Tokens
     let bufferTokens: string[] = [];
     if (Array.isArray(body.bufferAccessTokens)) {
       bufferTokens = body.bufferAccessTokens.map((k: string) => k.trim()).filter(Boolean);
@@ -67,28 +48,32 @@ export async function POST(request: NextRequest) {
       bufferTokens = [body.bufferAccessToken.trim()];
     }
 
-    updateOrAppend('TYPEFULLY_API_KEY', typefullyKeys[0] || '');
-    updateOrAppend('TYPEFULLY_API_KEYS', typefullyKeys.join(','));
+    // 3. Save directly to Supabase Database & Storage
+    const saved = await saveAppSettings({
+      typefullyApiKeys: typefullyKeys,
+      bufferAccessTokens: bufferTokens,
+      founderPasskey: body.founderPasskey,
+      marketerPasskey: body.marketerPasskey,
+      dashboardPasskey: body.dashboardPasskey,
+    });
 
-    updateOrAppend('BUFFER_ACCESS_TOKEN', bufferTokens[0] || '');
-    updateOrAppend('BUFFER_ACCESS_TOKENS', bufferTokens.join(','));
-
-    updateOrAppend('FOUNDER_PASSKEY', body.founderPasskey);
-    updateOrAppend('MARKETER_PASSKEY', body.marketerPasskey);
-    updateOrAppend('DASHBOARD_PASSKEY', body.dashboardPasskey);
-    updateOrAppend('NEXT_PUBLIC_SUPABASE_URL', body.supabaseUrl);
-    updateOrAppend('NEXT_PUBLIC_SUPABASE_ANON_KEY', body.supabaseAnonKey);
-    updateOrAppend('SUPABASE_SERVICE_ROLE_KEY', body.supabaseServiceKey);
-    updateOrAppend('SUPABASE_STORAGE_BUCKET', body.supabaseBucket || 'media');
-
-    fs.writeFileSync(envPath, envContent.trim() + '\n', 'utf8');
+    // 4. Immediately sync live profiles using the newly saved keys
+    try {
+      await fetchLiveSocialProfiles({
+        typefullyKeys: saved.typefullyApiKeys,
+        bufferTokens: saved.bufferAccessTokens,
+      });
+    } catch (syncErr) {
+      console.warn('Post-save profile sync warning:', syncErr);
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Settings saved successfully.',
+      message: 'Settings saved to database successfully.',
+      settings: saved,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to save settings';
+    const message = error instanceof Error ? error.message : 'Failed to save settings to database';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
