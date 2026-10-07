@@ -159,7 +159,8 @@ async function dispatchToBuffer(
   content: string,
   scheduledAt?: string | null,
   mediaUrls?: string[],
-  channels: PlatformId[] = ['linkedin']
+  channels: PlatformId[] = ['linkedin'],
+  profileIds?: string[]
 ): Promise<DispatchResult[]> {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   const linkedinProfileId = process.env.BUFFER_LINKEDIN_PROFILE_ID;
@@ -170,7 +171,11 @@ async function dispatchToBuffer(
   const targetChannels = channels.filter((c) => c === 'linkedin' || c === 'instagram');
 
   for (const channel of targetChannels) {
-    const profileId = channel === 'linkedin' ? linkedinProfileId : instagramProfileId;
+    // Check if an explicit profile ID was selected by the user for this Buffer channel
+    let profileId = profileIds?.find((id) => id.length === 24 && !id.startsWith('tf_'));
+    if (!profileId) {
+      profileId = channel === 'linkedin' ? linkedinProfileId : instagramProfileId;
+    }
 
     if (isSimulated || !profileId || profileId.includes('your_')) {
       results.push({
@@ -299,14 +304,14 @@ async function dispatchToBuffer(
  *  - LinkedIn & Instagram -> Buffer GraphQL API
  */
 export async function executeMultiChannelDispatch(options: DispatchOptions): Promise<DispatchResult[]> {
-  const { channels, content, scheduledAt, mediaUrls } = options;
+  const { channels, content, scheduledAt, mediaUrls, profileIds } = options;
 
   const typefullyChannels = channels.filter((c) => c === 'twitter' || c === 'threads');
   const bufferChannels = channels.filter((c) => c === 'linkedin' || c === 'instagram');
 
   const [typefullyResults, bufferResults] = await Promise.all([
     typefullyChannels.length > 0 ? dispatchToTypefully(content, scheduledAt, typefullyChannels) : Promise.resolve([]),
-    bufferChannels.length > 0 ? dispatchToBuffer(content, scheduledAt, mediaUrls, bufferChannels) : Promise.resolve([]),
+    bufferChannels.length > 0 ? dispatchToBuffer(content, scheduledAt, mediaUrls, bufferChannels, profileIds) : Promise.resolve([]),
   ]);
 
   return [...typefullyResults, ...bufferResults];

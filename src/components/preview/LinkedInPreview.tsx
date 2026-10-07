@@ -6,11 +6,25 @@ import { ThumbsUp, MessageSquare, Repeat2, Send, Globe, MoreHorizontal, ChevronL
 interface LinkedInPreviewProps {
   content: string;
   mediaUrls: string[];
+  profile?: {
+    name?: string;
+    handle?: string;
+    avatarUrl?: string;
+  };
 }
 
-export const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({ content, mediaUrls }) => {
+export const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({ content, mediaUrls, profile }) => {
   const [expanded, setExpanded] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const displayName = profile?.name || 'Your Name / Company';
+  const displayHeadline = profile?.handle || 'Business & Product Updates';
+  const initials = displayName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IN';
 
   const truncateThreshold = 210;
   const isTruncatable = content.length > truncateThreshold;
@@ -33,21 +47,30 @@ export const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({ content, media
       {/* Author Header */}
       <div className="p-4 flex items-start justify-between">
         <div className="flex gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white font-bold text-base shadow">
-            AF
-          </div>
+          {profile?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.avatarUrl}
+              alt={displayName}
+              className="w-12 h-12 rounded-full object-cover border border-slate-700 shadow"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white font-bold text-base shadow">
+              {initials}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-sm text-white hover:underline cursor-pointer">
-                Alex Founder
+                {displayName}
               </span>
               <span className="text-xs text-slate-400">• 1st</span>
             </div>
             <p className="text-xs text-slate-400 line-clamp-1">
-              Founder & CEO @ Stealth Social • Building next-gen distribution engines
+              {displayHeadline}
             </p>
             <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
-              <span>1h • Edited</span>
+              <span>Just now</span>
               <span>•</span>
               <Globe className="w-3 h-3 text-slate-500" />
             </div>
@@ -57,6 +80,7 @@ export const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({ content, media
           <MoreHorizontal className="w-5 h-5" />
         </button>
       </div>
+
 
       {/* Post Text */}
       <div className="px-4 pb-3 text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words">

@@ -6,12 +6,26 @@ import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Image as ImageIco
 interface InstagramPreviewProps {
   content: string;
   mediaUrls: string[];
+  profile?: {
+    name?: string;
+    handle?: string;
+    avatarUrl?: string;
+  };
 }
 
-export const InstagramPreview: React.FC<InstagramPreviewProps> = ({ content, mediaUrls }) => {
+export const InstagramPreview: React.FC<InstagramPreviewProps> = ({ content, mediaUrls, profile }) => {
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const displayHandle = profile?.handle?.replace(/^@/, '') || 'youraccount';
+  const displayName = profile?.name || 'Your Account';
+  const initials = displayName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IG';
 
   const totalSlides = mediaUrls.length;
 
@@ -32,15 +46,24 @@ export const InstagramPreview: React.FC<InstagramPreviewProps> = ({ content, med
         <div className="flex items-center gap-2.5">
           {/* Gradient Story Ring */}
           <div className="p-0.5 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600">
-            <div className="w-8 h-8 rounded-full bg-black p-0.5">
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white">
-                SH
-              </div>
+            <div className="w-8 h-8 rounded-full bg-black p-0.5 overflow-hidden">
+              {profile?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatarUrl}
+                  alt={displayName}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white">
+                  {initials}
+                </div>
+              )}
             </div>
           </div>
           <div>
             <span className="font-semibold text-xs text-zinc-100 hover:underline cursor-pointer block">
-              socialcontenthub
+              {displayHandle}
             </span>
             <span className="text-[10px] text-zinc-400 block -mt-0.5">Original Audio</span>
           </div>
@@ -159,7 +182,7 @@ export const InstagramPreview: React.FC<InstagramPreviewProps> = ({ content, med
 
       {/* Caption */}
       <div className="px-3.5 py-1 text-xs text-zinc-300 leading-snug whitespace-pre-line break-words max-h-32 overflow-y-auto">
-        <span className="font-semibold text-white mr-1.5">socialcontenthub</span>
+        <span className="font-semibold text-white mr-1.5">{displayHandle}</span>
         {content ? (
           content.split(' ').map((word, i) => {
             if (word.startsWith('#')) {

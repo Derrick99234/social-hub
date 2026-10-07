@@ -103,44 +103,18 @@ ON storage.objects FOR ALL
 USING (bucket_id = 'media');
 
 -- ==============================================================================
--- 🎉 Seed initial sample data for demonstration
+-- 🔐 Production Security & Access Grants
 -- ==============================================================================
-INSERT INTO public.ideas (raw_text, author, tags, status)
-VALUES 
-    ('Idea: Why 90% of SaaS founders fail at social media—they treat Twitter like a press release instead of a conversation. Let us break down the 3 rules we use.', 'founder', ARRAY['growth', 'twitter', 'strategy'], 'inbox'),
-    ('Raw thought: Behind the scenes of shipping our multi-channel scheduler. 1 click to 4 platforms. Took 2 weeks of API wrangling.', 'founder', ARRAY['behind-the-scenes', 'product'], 'inbox')
-ON CONFLICT DO NOTHING;
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
 
-INSERT INTO public.posts (title, content, channels, status, scheduled_at, author_role, author_name)
-VALUES 
-    (
-        'The Content Flywheel Breakdown',
-        'Stop creating content for 4 different platforms from scratch. 🛑
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO postgres, anon, authenticated, service_role;
 
-Here is how our 2-person marketing team scales our distribution 10x:
+ALTER TABLE IF EXISTS public.posts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.ideas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.dispatch_logs DISABLE ROW LEVEL SECURITY;
 
-1. Founder drops raw voice notes into the Idea Inbox
-2. Marketer polishes hooks and formats platform-specific previews
-3. 1-click dispatches via Typefully (X + Threads) & Buffer (LinkedIn + Instagram)
-
-Write once. Dominate everywhere. 🚀 #SaaS #Marketing #SocialMedia #Growth',
-        ARRAY['twitter', 'threads', 'linkedin', 'instagram'],
-        'scheduled',
-        NOW() + INTERVAL '1 day',
-        'marketer',
-        'Digital Marketer'
-    ),
-    (
-        'Product Launch Announcement',
-        'Thrilled to introduce our Unified Social Content Hub! 
-
-Post to X, Threads, LinkedIn, and Instagram in a single click with real-time visual mockups and automated scheduling. 
-
-What is your biggest pain point with social scheduling right now?',
-        ARRAY['twitter', 'linkedin'],
-        'published',
-        NOW() - INTERVAL '2 hours',
-        'founder',
-        'Founder'
-    )
-ON CONFLICT DO NOTHING;

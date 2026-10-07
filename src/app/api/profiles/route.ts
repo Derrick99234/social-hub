@@ -1,34 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { DEFAULT_PROFILES } from '@/lib/constants/profiles';
+import { fetchLiveSocialProfiles, getCachedProfiles } from '@/lib/services/profileSync';
 import { SocialProfile } from '@/types';
 
-export async function GET() {
-  const cachePath = path.join(process.cwd(), 'data', 'connected_profiles.json');
+export const dynamic = 'force-dynamic';
 
-  // 1. If cache file exists and has profiles, return them
-  if (fs.existsSync(cachePath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-      if (Array.isArray(data) && data.length > 0) {
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.get('refresh') === 'true';
+
+    // 1. Return cached profiles if not forcing refresh
+    if (!forceRefresh) {
+      const cached = getCachedProfiles();
+      if (cached && cached.length > 0) {
         return NextResponse.json({
           success: true,
           source: 'cache',
-          profiles: data,
+          profiles: cached,
         });
       }
-    } catch (e) {
-      console.warn('Could not read cached profiles:', e);
     }
-  }
 
-  // 2. Fallback to default mock profiles
-  return NextResponse.json({
-    success: true,
-    source: 'defaults',
-    profiles: DEFAULT_PROFILES,
-  });
+    // 2. Fetch live profiles from Typefully and Buffer APIs
+    const liveProfiles = await fetchLiveSocialProfiles();
+
+    return NextResponse.json({
+      success: true,
+      source: 'live_api',
+      profiles: liveProfiles,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch profiles';
+    return NextResponse.json({ error: message, profiles: [] }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -40,13 +44,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Profiles must be an array' }, { status: 400 });
     }
 
-    const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    const cachePath = path.join(dataDir, 'connected_profiles.json');
-    fs.writeFileSync(cachePath, JSON.stringify(profiles, null, 2), 'utf8');
+    // Store in global memory and sync
+    global.__cachedProfiles = profiles;
 
     return NextResponse.json({
       success: true,
@@ -58,3 +57,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

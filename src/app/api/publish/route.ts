@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       channels,
       scheduledAt,
       mediaUrls = [],
+      profileIds = [],
       authorRole = 'marketer',
       authorName = 'Marketer',
       notes,
@@ -57,7 +58,9 @@ export async function POST(request: NextRequest) {
       content,
       scheduledAt: isScheduling ? scheduledAt : null,
       mediaUrls,
+      profileIds,
     });
+
 
     // 3. Log all dispatch results in database
     const savedLogs = [];

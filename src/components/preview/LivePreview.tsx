@@ -5,18 +5,20 @@ import { TwitterPreview } from './TwitterPreview';
 import { LinkedInPreview } from './LinkedInPreview';
 import { InstagramPreview } from './InstagramPreview';
 import { ThreadsPreview } from './ThreadsPreview';
-import { PlatformId } from '@/types';
+import { PlatformId, SocialProfile } from '@/types';
 import { PLATFORMS } from '@/lib/constants/platforms';
 import { Eye } from 'lucide-react';
 
 interface LivePreviewProps {
   content: string;
   mediaUrls: string[];
+  profiles?: SocialProfile[];
 }
 
 export const LivePreview: React.FC<LivePreviewProps> = ({
   content,
   mediaUrls,
+  profiles = [],
 }) => {
   const [activeTab, setActiveTab] = useState<PlatformId>('twitter');
 
@@ -24,6 +26,9 @@ export const LivePreview: React.FC<LivePreviewProps> = ({
   const charLength = content.length;
   const remainingChars = currentPlatform.charLimit - charLength;
   const isOverLimit = remainingChars < 0;
+
+  // Find matching profile for currently active platform
+  const activeProfile = profiles.find((p) => p.network === activeTab);
 
   return (
     <div className="flex flex-col h-full bg-slate-900/40 rounded-2xl border border-slate-800/80 p-5 shadow-xl">
@@ -76,11 +81,20 @@ export const LivePreview: React.FC<LivePreviewProps> = ({
 
       {/* Preview Screen Body */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 bg-slate-950/60 rounded-xl border border-slate-900 overflow-y-auto min-h-[420px]">
-        {activeTab === 'twitter' && <TwitterPreview content={content} mediaUrls={mediaUrls} />}
-        {activeTab === 'threads' && <ThreadsPreview content={content} mediaUrls={mediaUrls} />}
-        {activeTab === 'linkedin' && <LinkedInPreview content={content} mediaUrls={mediaUrls} />}
-        {activeTab === 'instagram' && <InstagramPreview content={content} mediaUrls={mediaUrls} />}
+        {activeTab === 'twitter' && (
+          <TwitterPreview content={content} mediaUrls={mediaUrls} profile={activeProfile} />
+        )}
+        {activeTab === 'threads' && (
+          <ThreadsPreview content={content} mediaUrls={mediaUrls} profile={activeProfile} />
+        )}
+        {activeTab === 'linkedin' && (
+          <LinkedInPreview content={content} mediaUrls={mediaUrls} profile={activeProfile} />
+        )}
+        {activeTab === 'instagram' && (
+          <InstagramPreview content={content} mediaUrls={mediaUrls} profile={activeProfile} />
+        )}
       </div>
+
 
       {/* Notice footer */}
       <div className="pt-3 text-center">

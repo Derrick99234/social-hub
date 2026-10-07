@@ -1,124 +1,9 @@
 import { getSupabaseServerClient, isSupabaseConfigured } from '@/lib/supabase/server';
 import { Post, DispatchLog, Idea } from '@/types';
 
-// In-memory fallback dataset for instant zero-config testing & offline resilience
-const initialSeedIdeas: Idea[] = [
-  {
-    id: 'idea-1',
-    raw_text: '💡 Why 90% of SaaS founders fail at social media: they treat Twitter/X like a press release wire instead of a two-way dinner table conversation. Break down the 3 mindset shifts that 10x engagement.',
-    author: 'founder',
-    tags: ['Strategy', 'SaaS', 'Twitter'],
-    status: 'inbox',
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    id: 'idea-2',
-    raw_text: '🔥 Behind the scenes: Shipping our unified multi-channel scheduler. 1-click publishing to Twitter, LinkedIn, Instagram & Threads combining Typefully + Buffer free tiers. Marketer workflow is now 5x faster.',
-    author: 'founder',
-    tags: ['Product', 'BehindTheScenes', 'Growth'],
-    status: 'inbox',
-    created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 18).toISOString(),
-  },
-  {
-    id: 'idea-3',
-    raw_text: '📊 Micro-case study: How consistent 9:00 AM weekday scheduling doubled our impressions on LinkedIn and X in 30 days without spending $1 on ads.',
-    author: 'founder',
-    tags: ['CaseStudy', 'Analytics'],
-    status: 'inbox',
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-  }
-];
-
-const initialSeedPosts: Post[] = [
-  {
-    id: 'post-1',
-    title: 'The Content Flywheel Architecture',
-    content: `Stop creating content for 4 different platforms from scratch. 🛑
-
-Here is how our lean team scales our multi-channel distribution:
-
-1. Founder drops raw voice notes & bullets into the Idea Inbox
-2. Marketer polishes hooks and formats live previews
-3. 1-click dispatches via Typefully (X + Threads) & Buffer (LinkedIn + Instagram)
-
-Write once. Dominate everywhere. 🚀
-
-#SaaS #Marketing #Productivity #Distribution`,
-    channels: ['twitter', 'threads', 'linkedin', 'instagram'],
-    status: 'scheduled',
-    scheduled_at: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-    media_urls: ['https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=80'],
-    author_role: 'marketer',
-    author_name: 'Marketer Pro',
-    notes: 'Approved by Founder. Ready for tomorrow 9 AM drop.',
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    updated_at: new Date(Date.now() - 7200000).toISOString(),
-    dispatch_logs: [],
-  },
-  {
-    id: 'post-2',
-    title: 'Framework: High-Signal Social Writing',
-    content: `Most corporate posts are boring because they edit out the human.
-
-The 3-part framework for high-signal posts:
-→ The Hook: Challenge a common myth
-→ The Proof: 1 real metric or screenshot
-→ The Takeaway: 1 action the reader can take in 5 minutes
-
-Steal this template and try it today. What is your go-to framework?`,
-    channels: ['twitter', 'linkedin'],
-    status: 'published',
-    published_at: new Date(Date.now() - 14400000).toISOString(),
-    media_urls: [],
-    author_role: 'founder',
-    author_name: 'Alex Founder',
-    notes: 'Published successfully earlier today.',
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 14400000).toISOString(),
-    dispatch_logs: [
-      {
-        id: 'log-1',
-        post_id: 'post-2',
-        channel: 'twitter',
-        service: 'typefully',
-        status: 'success',
-        external_id: 'tf_draft_991823',
-        external_url: 'https://typefully.com',
-        dispatched_at: new Date(Date.now() - 14400000).toISOString(),
-      },
-      {
-        id: 'log-2',
-        post_id: 'post-2',
-        channel: 'linkedin',
-        service: 'buffer',
-        status: 'success',
-        external_id: 'buf_upd_448291',
-        external_url: 'https://buffer.com',
-        dispatched_at: new Date(Date.now() - 14400000).toISOString(),
-      }
-    ]
-  },
-  {
-    id: 'post-3',
-    title: 'Weekend Teaser: New Feature Preview',
-    content: `Sneak peek at what we are rolling out next week:
-Native thread break preview, automated hashtag generation, and Supabase Storage asset piping.
-
-Drop a comment if you want early beta access! 👇`,
-    channels: ['twitter', 'threads', 'instagram'],
-    status: 'draft',
-    media_urls: ['https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80'],
-    author_role: 'marketer',
-    author_name: 'Marketer Pro',
-    notes: 'Draft awaiting final visual graphic from design.',
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    dispatch_logs: [],
-  }
-];
+// In-memory store fallback for offline/transient caching (starts completely empty for production)
+const initialSeedIdeas: Idea[] = [];
+const initialSeedPosts: Post[] = [];
 
 // Persistent global store across Next.js dev server reloads
 declare global {
@@ -132,11 +17,12 @@ declare global {
 
 if (!global.__memoryStore) {
   global.__memoryStore = {
-    posts: initialSeedPosts,
-    ideas: initialSeedIdeas,
-    logs: initialSeedPosts.flatMap((p) => p.dispatch_logs || []),
+    posts: [],
+    ideas: [],
+    logs: [],
   };
 }
+
 
 export const repository = {
   async getPosts(): Promise<Post[]> {

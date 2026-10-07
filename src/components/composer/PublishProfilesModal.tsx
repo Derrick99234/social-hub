@@ -107,64 +107,83 @@ export const PublishProfilesModal: React.FC<PublishProfilesModalProps> = ({
           </div>
 
           {/* Profile options */}
-          <div className="space-y-2">
-            {profiles.map((profile) => {
-              const isSelected = selectedIds.includes(profile.id);
-              const meta = PLATFORMS[profile.network];
+          {profiles.length === 0 ? (
+            <div className="p-6 text-center rounded-xl bg-slate-950/60 border border-slate-800">
+              <p className="text-sm font-semibold text-white mb-1">No Social Profiles Connected</p>
+              <p className="text-xs text-slate-400">
+                Please add your Typefully or Buffer API keys in Settings to connect your accounts.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {profiles.map((profile) => {
+                const isSelected = selectedIds.includes(profile.id);
+                const meta = PLATFORMS[profile.network];
 
-              return (
-                <div
-                  key={profile.id}
-                  onClick={() => toggleProfile(profile.id)}
-                  className={`p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
-                    isSelected
-                      ? 'bg-slate-900 border-blue-500/50 shadow-sm'
-                      : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 opacity-75'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* Network color badge / avatar */}
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0"
-                      style={{ backgroundColor: meta?.color || '#3b82f6' }}
-                    >
-                      {profile.network === 'twitter' && 'X'}
-                      {profile.network === 'threads' && '@'}
-                      {profile.network === 'linkedin' && 'in'}
-                      {profile.network === 'instagram' && 'IG'}
-                    </div>
+                return (
+                  <div
+                    key={profile.id}
+                    onClick={() => toggleProfile(profile.id)}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
+                      isSelected
+                        ? 'bg-slate-900 border-blue-500/50 shadow-sm'
+                        : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 opacity-75'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Avatar photo or network badge */}
+                      {profile.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={profile.avatarUrl}
+                          alt={profile.name}
+                          className="w-10 h-10 rounded-full object-cover shadow-sm flex-shrink-0 border border-slate-700"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0"
+                          style={{ backgroundColor: meta?.color || '#3b82f6' }}
+                        >
+                          {profile.network === 'twitter' && 'X'}
+                          {profile.network === 'threads' && '@'}
+                          {profile.network === 'linkedin' && 'in'}
+                          {profile.network === 'instagram' && 'IG'}
+                        </div>
+                      )}
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-white truncate">
-                          {profile.name}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium uppercase">
-                          {meta?.name || profile.network}
-                        </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-white truncate">
+                            {profile.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium uppercase">
+                            {meta?.name || profile.network}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                          {profile.handle}
+                        </p>
                       </div>
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                        {profile.handle}
-                      </p>
                     </div>
-                  </div>
 
-                  {/* Checkbox indicator */}
-                  <div className="flex items-center justify-center pl-3">
-                    <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                        isSelected
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'border border-slate-700 bg-slate-900'
-                      }`}
-                    >
-                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {/* Checkbox indicator */}
+                    <div className="flex items-center justify-center pl-3">
+                      <div
+                        className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'border border-slate-700 bg-slate-900'
+                        }`}
+                      >
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
+
 
           {/* Scheduling timing badge if scheduling */}
           {isScheduling && scheduledDate && (

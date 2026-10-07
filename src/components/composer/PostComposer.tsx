@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Send,
   Calendar,
@@ -12,12 +12,12 @@ import {
   X,
   Eye,
   Edit3,
+  RotateCw,
 } from 'lucide-react';
 import { PlatformId, Post, SocialProfile } from '@/types';
 import { MediaUploader } from './MediaUploader';
 import { LivePreview } from '../preview/LivePreview';
 import { PublishProfilesModal } from './PublishProfilesModal';
-import { DEFAULT_PROFILES } from '@/lib/constants/profiles';
 
 interface PostComposerProps {
   initialPost?: Partial<Post> | null;
@@ -47,8 +47,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       : '09:00'
   );
 
-  // Profiles system
-  const [availableProfiles, setAvailableProfiles] = useState<SocialProfile[]>(DEFAULT_PROFILES);
+  // Profiles system - dynamically populated from live Typefully/Buffer APIs
+  const [availableProfiles, setAvailableProfiles] = useState<SocialProfile[]>([]);
+  const [isSyncingProfiles, setIsSyncingProfiles] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
@@ -60,18 +61,24 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   } | null>(null);
 
   // Fetch available profiles from /api/profiles
-  useEffect(() => {
-    fetch('/api/profiles')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.profiles && Array.isArray(data.profiles)) {
-          setAvailableProfiles(data.profiles);
-        }
-      })
-      .catch(() => {
-        // Fallback to DEFAULT_PROFILES
-      });
+  const loadProfiles = useCallback(async (refresh = false) => {
+    setIsSyncingProfiles(true);
+    try {
+      const res = await fetch(`/api/profiles${refresh ? '?refresh=true' : ''}`);
+      const data = await res.json();
+      if (data.profiles && Array.isArray(data.profiles)) {
+        setAvailableProfiles(data.profiles);
+      }
+    } catch (err) {
+      console.warn('Failed to load profiles:', err);
+    } finally {
+      setIsSyncingProfiles(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadProfiles();
+  }, [loadProfiles]);
 
   // Sync if initialPost changes
   useEffect(() => {
@@ -152,6 +159,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           channels: targetChannels,
           scheduledAt,
           mediaUrls,
+          profileIds: selectedProfiles.map((p) => p.id),
           authorRole: userRole,
           authorName: userRole === 'founder' ? 'Founder' : 'Marketer',
         }),
@@ -274,16 +282,35 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 </p>
               </div>
 
-              {onClose && (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
-                  title="Close"
+                  onClick={() => loadProfiles(true)}
+                  disabled={isSyncingProfiles}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs text-slate-300 hover:text-white transition-all"
+                  title="Sync latest live profiles from Typefully and Buffer APIs"
                 >
-                  <X className="w-5 h-5" />
+                  <RotateCw className={`w-3.5 h-3.5 text-blue-400 ${isSyncingProfiles ? 'animate-spin' : ''}`} />
+                  <span className="text-[11px] font-medium">
+                    {isSyncingProfiles
+                      ? 'Syncing...'
+                      : availableProfiles.length > 0
+                      ? `${availableProfiles.length} Live Profiles`
+                      : 'Sync Profiles'}
+                  </span>
                 </button>
-              )}
+
+                {onClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+                    title="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Post Content Area */}
@@ -499,7 +526,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <Edit3 className="w-3.5 h-3.5" />
             <span>← Back to Post Editor</span>
           </button>
-          <LivePreview content={content} mediaUrls={mediaUrls} />
+          <LivePreview content={content} mediaUrls={mediaUrls} profiles={availableProfiles} />
         </div>
       </div>
 

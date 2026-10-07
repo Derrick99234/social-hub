@@ -6,11 +6,25 @@ import { MessageCircle, Repeat2, Heart, Bookmark, Share, CheckCircle2, MoreHoriz
 interface TwitterPreviewProps {
   content: string;
   mediaUrls: string[];
+  profile?: {
+    name?: string;
+    handle?: string;
+    avatarUrl?: string;
+  };
 }
 
-export const TwitterPreview: React.FC<TwitterPreviewProps> = ({ content, mediaUrls }) => {
+export const TwitterPreview: React.FC<TwitterPreviewProps> = ({ content, mediaUrls, profile }) => {
   const charLimit = 280;
   const isThread = content.length > charLimit;
+
+  const displayName = profile?.name || 'Your Account';
+  const displayHandle = profile?.handle || '@yourhandle';
+  const initials = displayName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'X';
 
   // Split content into simulated tweets if it exceeds 280 chars
   const splitIntoTweets = (text: string) => {
@@ -134,9 +148,18 @@ export const TwitterPreview: React.FC<TwitterPreviewProps> = ({ content, mediaUr
 
             {/* Profile Avatar */}
             <div className="relative flex-shrink-0 z-10">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center font-bold text-white text-sm shadow">
-                AF
-              </div>
+              {profile?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatarUrl}
+                  alt={displayName}
+                  className="w-10 h-10 rounded-full object-cover border border-zinc-800 shadow"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center font-bold text-white text-sm shadow">
+                  {initials}
+                </div>
+              )}
             </div>
 
             {/* Tweet Content Body */}
@@ -145,10 +168,10 @@ export const TwitterPreview: React.FC<TwitterPreviewProps> = ({ content, mediaUr
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-bold text-sm text-zinc-100 hover:underline cursor-pointer">
-                    Alex Founder
+                    {displayName}
                   </span>
                   <CheckCircle2 className="w-3.5 h-3.5 fill-sky-400 text-black inline" />
-                  <span className="text-xs text-zinc-500">@alex_founder</span>
+                  <span className="text-xs text-zinc-500">{displayHandle}</span>
                   <span className="text-zinc-600 text-xs">·</span>
                   <span className="text-xs text-zinc-500">Now</span>
                 </div>
