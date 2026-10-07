@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MessageCircle, Repeat2, Heart, Bookmark, Share, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { MessageCircle, Repeat2, Heart, Bookmark, Share, CheckCircle2, MoreHorizontal, Layers } from 'lucide-react';
 
 interface TwitterPreviewProps {
   content: string;
@@ -226,8 +226,9 @@ export const TwitterPreview: React.FC<TwitterPreviewProps> = ({ content, mediaUr
       })}
 
       {isThread && (
-        <div className="mt-2 text-center text-xs text-sky-400 font-medium py-1.5 px-3 rounded-lg bg-sky-500/10 border border-sky-500/20">
-          🧵 Typefully auto-thread preview enabled (length exceeds 280 chars)
+        <div className="mt-2 text-center text-xs text-sky-400 font-medium py-1.5 px-3 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center gap-1.5">
+          <Layers className="w-3.5 h-3.5" />
+          <span>Typefully auto-thread preview enabled (length exceeds 280 chars)</span>
         </div>
       )}
     </div>

@@ -194,7 +194,7 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({ mediaUrls, onChang
 
                 {/* Slide index badge */}
                 <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-md text-[10px] font-bold text-white border border-slate-700/80 shadow">
-                  {idx === 0 ? '★ 1st (Cover)' : `#${idx + 1}`}
+                  {idx === 0 ? 'Cover (Slide 1)' : `Slide ${idx + 1}`}
                 </div>
 
                 {/* Remove button overlay */}

@@ -195,11 +195,12 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       if (data.dispatchResults && Array.isArray(data.dispatchResults)) {
         setStatusModalItems((prev) =>
           prev.map((item) => {
-            const match = data.dispatchResults.find(
-              (r: any) =>
-                (r.profileId && r.profileId === item.profileId) ||
-                r.channel === item.channel
-            );
+            const match = data.dispatchResults.find((r: any) => {
+              if (item.profileId && r.profileId) {
+                return r.profileId === item.profileId;
+              }
+              return r.channel === item.channel;
+            });
             if (match) {
               return {
                 ...item,

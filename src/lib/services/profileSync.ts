@@ -129,16 +129,16 @@ export async function fetchLiveSocialProfiles(customKeys?: {
 
             for (const ch of channels) {
               const srv = ch.service?.toLowerCase();
-              let network: 'twitter' | 'threads' | 'linkedin' | 'instagram' = 'linkedin';
+              let network: 'twitter' | 'threads' | 'linkedin' | 'instagram' | null = null;
 
               if (srv === 'instagram') {
                 network = 'instagram';
+              } else if (srv === 'linkedin') {
+                network = 'linkedin';
               } else if (srv === 'twitter') {
                 network = 'twitter';
               } else if (srv === 'threads') {
                 network = 'threads';
-              } else if (srv === 'linkedin') {
-                network = 'linkedin';
               } else {
                 continue;
               }
@@ -149,12 +149,21 @@ export async function fetchLiveSocialProfiles(customKeys?: {
 
               // Check if already in list
               if (!discoveredProfiles.some((p) => p.id === ch.id)) {
-                const isOrg = ch.serviceId?.includes('organization') || ch.serviceId?.includes('page');
+                const isOrg = ch.serviceId?.includes('organization') || ch.serviceId?.includes('page') || ch.name === 'onerepai';
+                let displayName = ch.name || `${ch.service} Profile`;
+                if (network === 'linkedin') {
+                  if (isOrg) {
+                    displayName = 'OneRep AI (Company Page)';
+                  } else if (ch.name?.includes('olatunbosun')) {
+                    displayName = 'Olatunbosun Olashubomi';
+                  }
+                }
+
                 const handle = ch.name ? (ch.name.startsWith('@') ? ch.name : `@${ch.name}`) : `@${ch.service}`;
 
                 discoveredProfiles.push({
                   id: ch.id,
-                  name: ch.name || `${ch.service} Profile`,
+                  name: displayName,
                   handle,
                   network,
                   service: 'buffer',

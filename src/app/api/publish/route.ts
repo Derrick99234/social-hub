@@ -78,7 +78,14 @@ export async function POST(request: NextRequest) {
         status: result.status,
         external_id: result.externalId,
         external_url: result.externalUrl,
-        response_payload: result.responseReceived || (result.payloadSent ? { payload: result.payloadSent } : null),
+        response_payload: {
+          profileId: result.profileId,
+          profileName: result.profileName,
+          profileHandle: result.profileHandle,
+          profileAvatar: result.profileAvatar,
+          rawResponse: result.responseReceived,
+          payloadSent: result.payloadSent,
+        },
         error_message: result.error,
       });
       savedLogs.push(log);

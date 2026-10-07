@@ -10,7 +10,7 @@ import { CalendarView } from '@/components/calendar/CalendarView';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { DispatchStatusModal, ChannelStatusItem } from '@/components/composer/DispatchStatusModal';
 import { PLATFORMS } from '@/lib/constants/platforms';
-import { Post, Idea, ServiceHealthStatus } from '@/types';
+import { Post, Idea, ServiceHealthStatus, SocialProfile } from '@/types';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -21,6 +21,7 @@ export default function Home() {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [profiles, setProfiles] = useState<SocialProfile[]>([]);
   const [status, setStatus] = useState<ServiceHealthStatus | null>(null);
 
   // Composer popup modal state
@@ -82,6 +83,19 @@ export default function Home() {
     }
   }, []);
 
+  // 5. Fetch connected profiles
+  const fetchProfiles = useCallback(async () => {
+    try {
+      const res = await fetch('/api/profiles');
+      const data = await res.json();
+      if (data.profiles && Array.isArray(data.profiles)) {
+        setProfiles(data.profiles);
+      }
+    } catch (err) {
+      console.error('Failed to fetch profiles', err);
+    }
+  }, []);
+
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -90,9 +104,10 @@ export default function Home() {
     if (isAuthenticated) {
       fetchPosts();
       fetchIdeas();
+      fetchProfiles();
       fetchStatus();
     }
-  }, [isAuthenticated, fetchPosts, fetchIdeas, fetchStatus]);
+  }, [isAuthenticated, fetchPosts, fetchIdeas, fetchProfiles, fetchStatus]);
 
   // Handle successful login
   const handleAuthSuccess = (selectedRole: string) => {
@@ -101,6 +116,7 @@ export default function Home() {
     setCurrentTab('calendar');
     fetchPosts();
     fetchIdeas();
+    fetchProfiles();
     fetchStatus();
   };
 
@@ -161,17 +177,63 @@ export default function Home() {
     }
   };
 
-  // Helper to extract channel status items from an existing post
+  // Helper to extract channel status items from an existing post with deduplication
   const getStatusItemsForPost = (post: Post | null): ChannelStatusItem[] => {
     if (!post) return [];
     const items: ChannelStatusItem[] = [];
 
     if (post.dispatch_logs && post.dispatch_logs.length > 0) {
-      for (const log of post.dispatch_logs) {
+      // Sort logs newest first
+      const sortedLogs = [...post.dispatch_logs].sort(
+        (a, b) => new Date(b.dispatched_at).getTime() - new Date(a.dispatched_at).getTime()
+      );
+
+      const seenKeys = new Set<string>();
+
+      for (const log of sortedLogs) {
+        // Resolve profileId if available
+        let pId = (log.response_payload?.profileId as string) || undefined;
+
+        if (!pId) {
+          const rawStr = JSON.stringify(log.response_payload || {}) + (log.error_message || '');
+          const matchedP = profiles.find((p) => rawStr.includes(p.id));
+          if (matchedP) {
+            pId = matchedP.id;
+          }
+        }
+
+        const dedupKey = pId ? `${log.channel}:${pId}` : log.channel;
+        if (seenKeys.has(dedupKey)) {
+          continue;
+        }
+        seenKeys.add(dedupKey);
+
+        const matchedProfile = pId
+          ? profiles.find((p) => p.id === pId)
+          : profiles.find((p) => p.network === log.channel);
+
+        const displayName =
+          matchedProfile?.name ||
+          (log.response_payload?.profileName as string) ||
+          PLATFORMS[log.channel]?.name ||
+          log.channel.toUpperCase();
+
+        const handle =
+          matchedProfile?.handle ||
+          (log.response_payload?.profileHandle as string) ||
+          `@${log.channel}`;
+
+        const avatarUrl =
+          matchedProfile?.avatarUrl ||
+          (log.response_payload?.profileAvatar as string) ||
+          undefined;
+
         items.push({
           channel: log.channel,
-          name: PLATFORMS[log.channel]?.name || log.channel.toUpperCase(),
-          handle: `@${log.channel}`,
+          profileId: pId,
+          name: displayName,
+          handle,
+          avatarUrl,
           service: log.service as 'typefully' | 'buffer',
           status: log.status === 'success' || log.status === 'simulated' ? 'success' : 'failed',
           error: log.error_message,
@@ -182,10 +244,13 @@ export default function Home() {
     } else {
       for (const ch of post.channels) {
         const isSuccess = post.status === 'published';
+        const matched = profiles.find((p) => p.network === ch);
         items.push({
           channel: ch,
-          name: PLATFORMS[ch]?.name || ch.toUpperCase(),
-          handle: `@${ch}`,
+          profileId: matched?.id,
+          name: matched?.name || PLATFORMS[ch]?.name || ch.toUpperCase(),
+          handle: matched?.handle || `@${ch}`,
+          avatarUrl: matched?.avatarUrl,
           service: ch === 'twitter' || ch === 'threads' ? 'typefully' : 'buffer',
           status: isSuccess ? 'success' : 'failed',
         });
@@ -205,6 +270,7 @@ export default function Home() {
           title: selectedStatusPost.title,
           content: selectedStatusPost.content,
           channels: [item.channel],
+          profileIds: item.profileId ? [item.profileId] : undefined,
           mediaUrls: selectedStatusPost.media_urls,
           authorRole: role,
           authorName: role === 'founder' ? 'Founder' : 'Marketer',

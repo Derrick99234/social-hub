@@ -1,4 +1,5 @@
 import { PlatformId } from '@/types';
+import { getCachedProfiles } from './profileSync';
 
 interface DispatchOptions {
   postId: string;
@@ -12,6 +13,9 @@ interface DispatchOptions {
 export interface DispatchResult {
   channel: PlatformId;
   profileId?: string;
+  profileName?: string;
+  profileHandle?: string;
+  profileAvatar?: string;
   service: 'typefully' | 'buffer';
   success: boolean;
   status: 'success' | 'failed' | 'simulated';
@@ -69,12 +73,22 @@ async function dispatchToTypefully(
 
   if (targetChannels.length === 0) return results;
 
+  const allProfiles = getCachedProfiles() || [];
+  const profileMap = new Map(allProfiles.map((p) => [p.id, p]));
+
   if (isSimulated) {
     for (const channel of targetChannels) {
       const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
+      const matched = matchedProfileId
+        ? profileMap.get(matchedProfileId)
+        : allProfiles.find((p) => p.network === channel && p.service === 'typefully');
+
       results.push({
         channel,
-        profileId: matchedProfileId,
+        profileId: matched?.id || matchedProfileId,
+        profileName: matched?.name || 'Olatunbosun Olashubomi',
+        profileHandle: matched?.handle || '@Derrick9923_1',
+        profileAvatar: matched?.avatarUrl,
         service: 'typefully',
         success: true,
         status: 'simulated',
@@ -152,9 +166,16 @@ async function dispatchToTypefully(
 
       for (const channel of targetChannels) {
         const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
+        const matched = matchedProfileId
+          ? profileMap.get(matchedProfileId)
+          : allProfiles.find((p) => p.network === channel && p.service === 'typefully');
+
         results.push({
           channel,
-          profileId: matchedProfileId,
+          profileId: matched?.id || matchedProfileId,
+          profileName: matched?.name || 'Olatunbosun Olashubomi',
+          profileHandle: matched?.handle || '@Derrick9923_1',
+          profileAvatar: matched?.avatarUrl,
           service: 'typefully',
           success: false,
           status: 'failed',
@@ -172,9 +193,16 @@ async function dispatchToTypefully(
 
       for (const channel of targetChannels) {
         const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
+        const matched = matchedProfileId
+          ? profileMap.get(matchedProfileId)
+          : allProfiles.find((p) => p.network === channel && p.service === 'typefully');
+
         results.push({
           channel,
-          profileId: matchedProfileId,
+          profileId: matched?.id || matchedProfileId,
+          profileName: matched?.name || 'Olatunbosun Olashubomi',
+          profileHandle: matched?.handle || '@Derrick9923_1',
+          profileAvatar: matched?.avatarUrl,
           service: 'typefully',
           success: true,
           status: 'success',
@@ -189,9 +217,16 @@ async function dispatchToTypefully(
     const errorMessage = err instanceof Error ? err.message : 'Unknown Typefully network error';
     for (const channel of targetChannels) {
       const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
+      const matched = matchedProfileId
+        ? profileMap.get(matchedProfileId)
+        : allProfiles.find((p) => p.network === channel && p.service === 'typefully');
+
       results.push({
         channel,
-        profileId: matchedProfileId,
+        profileId: matched?.id || matchedProfileId,
+        profileName: matched?.name || 'Olatunbosun Olashubomi',
+        profileHandle: matched?.handle || '@Derrick9923_1',
+        profileAvatar: matched?.avatarUrl,
         service: 'typefully',
         success: false,
         status: 'failed',
@@ -219,23 +254,56 @@ async function dispatchToBuffer(
   const targetChannels = channels.filter((c) => c === 'linkedin' || c === 'instagram');
   const results: DispatchResult[] = [];
 
-  // Determine all target Buffer profile IDs
-  // If user selected explicit profiles from the modal, use all matching Buffer profiles (length 24)
+  const allProfiles = getCachedProfiles() || [];
+  const profileMap = new Map(allProfiles.map((p) => [p.id, p]));
+
+  // Determine all target Buffer profile IDs (length 24 and not starting with tf_)
   const bufferProfileIds = (profileIds || []).filter((id) => id.length === 24 && !id.startsWith('tf_'));
 
-  const dispatchTargets: Array<{ profileId: string; channel: PlatformId }> = [];
+  interface BufferTarget {
+    profileId: string;
+    channel: PlatformId;
+    profileName?: string;
+    profileHandle?: string;
+    profileAvatar?: string;
+  }
+
+  const dispatchTargets: BufferTarget[] = [];
 
   if (bufferProfileIds.length > 0) {
     for (const pId of bufferProfileIds) {
-      // Find channel type if known, default based on targetChannels
-      const channelType = targetChannels.find((c) => c === 'instagram') ? 'instagram' : 'linkedin';
-      dispatchTargets.push({ profileId: pId, channel: channelType });
+      const matched = profileMap.get(pId);
+      let resolvedChannel: PlatformId;
+      if (matched?.network) {
+        resolvedChannel = matched.network;
+      } else if (pId === linkedinProfileId) {
+        resolvedChannel = 'linkedin';
+      } else if (pId === instagramProfileId) {
+        resolvedChannel = 'instagram';
+      } else {
+        resolvedChannel = targetChannels.find((c) => c === 'instagram') ? 'instagram' : 'linkedin';
+      }
+
+      dispatchTargets.push({
+        profileId: pId,
+        channel: resolvedChannel,
+        profileName: matched?.name,
+        profileHandle: matched?.handle,
+        profileAvatar: matched?.avatarUrl,
+      });
     }
   } else {
     for (const channel of targetChannels) {
       const fallbackId = channel === 'linkedin' ? linkedinProfileId : instagramProfileId;
       if (fallbackId) {
-        dispatchTargets.push({ profileId: fallbackId, channel });
+        const matched = profileMap.get(fallbackId);
+        dispatchTargets.push({
+          profileId: fallbackId,
+          channel,
+          profileName: matched?.name,
+          profileHandle: matched?.handle,
+          profileAvatar: matched?.avatarUrl,
+        });
       }
     }
   }
@@ -243,7 +311,7 @@ async function dispatchToBuffer(
   if (dispatchTargets.length === 0) return results;
 
   for (const target of dispatchTargets) {
-    const { profileId, channel } = target;
+    const { profileId, channel, profileName, profileHandle, profileAvatar } = target;
     const token = await getBufferTokenForChannel(profileId);
     const isSimulated = !token || token.includes('your_') || token.trim() === '';
 
@@ -251,6 +319,9 @@ async function dispatchToBuffer(
       results.push({
         channel,
         profileId,
+        profileName,
+        profileHandle,
+        profileAvatar,
         service: 'buffer',
         success: true,
         status: 'simulated',
@@ -294,6 +365,7 @@ async function dispatchToBuffer(
       // - needsApproval: false
       // - mode: "customScheduled" | "shareNow"
       // - assets: [{ image: { url } }]
+      // - metadata: { instagram: { type: "post", shouldShareToFeed: true } } for Instagram
       const inputPayload: Record<string, unknown> = {
         channelId: profileId,
         text: content,
@@ -308,6 +380,15 @@ async function dispatchToBuffer(
         inputPayload.assets = mediaUrls.map((url) => ({
           image: { url },
         }));
+      }
+
+      if (channel === 'instagram') {
+        inputPayload.metadata = {
+          instagram: {
+            type: 'post',
+            shouldShareToFeed: true,
+          },
+        };
       }
 
       const res = await fetch('https://api.buffer.com/graphql', {
@@ -332,6 +413,9 @@ async function dispatchToBuffer(
         results.push({
           channel,
           profileId,
+          profileName,
+          profileHandle,
+          profileAvatar,
           service: 'buffer',
           success: false,
           status: 'failed',
@@ -343,6 +427,9 @@ async function dispatchToBuffer(
         results.push({
           channel,
           profileId,
+          profileName,
+          profileHandle,
+          profileAvatar,
           service: 'buffer',
           success: true,
           status: 'success',
@@ -357,6 +444,9 @@ async function dispatchToBuffer(
         results.push({
           channel,
           profileId,
+          profileName,
+          profileHandle,
+          profileAvatar,
           service: 'buffer',
           success: false,
           status: 'failed',
@@ -370,6 +460,9 @@ async function dispatchToBuffer(
       results.push({
         channel,
         profileId,
+        profileName,
+        profileHandle,
+        profileAvatar,
         service: 'buffer',
         success: false,
         status: 'failed',

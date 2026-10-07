@@ -380,7 +380,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {profiles.map((profile) => {
                     const platformInfo = PLATFORMS[profile.network] || {
                       name: profile.network,
-                      icon: '🌐',
+                      icon: 'Globe',
                       color: 'bg-slate-700',
                     };
 
