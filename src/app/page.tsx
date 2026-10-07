@@ -8,6 +8,8 @@ import { IdeaInbox } from '@/components/ideas/IdeaInbox';
 import { ContentQueue } from '@/components/queue/ContentQueue';
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { DispatchStatusModal, ChannelStatusItem } from '@/components/composer/DispatchStatusModal';
+import { PLATFORMS } from '@/lib/constants/platforms';
 import { Post, Idea, ServiceHealthStatus } from '@/types';
 
 export default function Home() {
@@ -24,6 +26,10 @@ export default function Home() {
   // Composer popup modal state
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [composerPost, setComposerPost] = useState<Partial<Post> | null>(null);
+
+  // Status modal state for already dispatched/sent posts
+  const [selectedStatusPost, setSelectedStatusPost] = useState<Post | null>(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -128,10 +134,91 @@ export default function Home() {
     setIsComposerOpen(true);
   };
 
-  // Bridge action: Edit post from Queue -> Open Composer Modal
-  const handleEditPost = (post: Post) => {
-    setComposerPost(post);
-    setIsComposerOpen(true);
+  // Bridge action: Clicking a post from Calendar or Queue
+  // If sent/failed -> Open clean DispatchStatusModal!
+  // If scheduled/draft -> Open Composer to edit text, channels, schedule, or delete!
+  const handleSelectPost = (post: Post) => {
+    if (post.status === 'published' || post.status === 'failed') {
+      setSelectedStatusPost(post);
+      setIsStatusModalOpen(true);
+    } else {
+      setComposerPost(post);
+      setIsComposerOpen(true);
+    }
+  };
+
+  // Delete any post (scheduled or sent)
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
+      await fetchPosts();
+      await fetchIdeas();
+      setIsStatusModalOpen(false);
+      setIsComposerOpen(false);
+      setSelectedStatusPost(null);
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+    }
+  };
+
+  // Helper to extract channel status items from an existing post
+  const getStatusItemsForPost = (post: Post | null): ChannelStatusItem[] => {
+    if (!post) return [];
+    const items: ChannelStatusItem[] = [];
+
+    if (post.dispatch_logs && post.dispatch_logs.length > 0) {
+      for (const log of post.dispatch_logs) {
+        items.push({
+          channel: log.channel,
+          name: PLATFORMS[log.channel]?.name || log.channel.toUpperCase(),
+          handle: `@${log.channel}`,
+          service: log.service as 'typefully' | 'buffer',
+          status: log.status === 'success' || log.status === 'simulated' ? 'success' : 'failed',
+          error: log.error_message,
+          externalUrl: log.external_url,
+          externalId: log.external_id,
+        });
+      }
+    } else {
+      for (const ch of post.channels) {
+        const isSuccess = post.status === 'published';
+        items.push({
+          channel: ch,
+          name: PLATFORMS[ch]?.name || ch.toUpperCase(),
+          handle: `@${ch}`,
+          service: ch === 'twitter' || ch === 'threads' ? 'typefully' : 'buffer',
+          status: isSuccess ? 'success' : 'failed',
+        });
+      }
+    }
+    return items;
+  };
+
+  const handleRetryChannelOnPost = async (item: ChannelStatusItem) => {
+    if (!selectedStatusPost) return;
+    try {
+      await fetch('/api/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: selectedStatusPost.id,
+          title: selectedStatusPost.title,
+          content: selectedStatusPost.content,
+          channels: [item.channel],
+          mediaUrls: selectedStatusPost.media_urls,
+          authorRole: role,
+          authorName: role === 'founder' ? 'Founder' : 'Marketer',
+        }),
+      });
+      await fetchPosts();
+      const res = await fetch(`/api/posts/${selectedStatusPost.id}`);
+      const updated = await res.json();
+      if (updated?.post) {
+        setSelectedStatusPost(updated.post);
+      }
+    } catch (err) {
+      console.error('Retry failed:', err);
+    }
   };
 
   // Bridge action: Create post from Calendar date click -> Open Composer Modal
@@ -195,7 +282,7 @@ export default function Home() {
         {currentTab === 'calendar' && (
           <CalendarView
             posts={posts}
-            onSelectPost={handleEditPost}
+            onSelectPost={handleSelectPost}
             onCreateAtDate={handleCreateAtCalendarDate}
           />
         )}
@@ -212,7 +299,7 @@ export default function Home() {
         {currentTab === 'queue' && (
           <ContentQueue
             posts={posts}
-            onEditPost={handleEditPost}
+            onEditPost={handleSelectPost}
             onRefreshPosts={fetchPosts}
           />
         )}
@@ -224,7 +311,10 @@ export default function Home() {
           <div className="relative w-full max-w-6xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-0 sm:p-2 rounded-2xl sm:rounded-3xl">
             <PostComposer
               initialPost={composerPost}
-              onClose={() => setIsComposerOpen(false)}
+              onClose={() => {
+                setIsComposerOpen(false);
+                setComposerPost(null);
+              }}
               onPostDispatched={() => {
                 fetchPosts();
                 fetchIdeas();
@@ -232,11 +322,25 @@ export default function Home() {
               onSavedDraft={() => {
                 fetchPosts();
               }}
+              onDeletePost={handleDeletePost}
               userRole={role}
             />
           </div>
         </div>
       )}
+
+      {/* Sent / Dispatched Post Status Modal */}
+      <DispatchStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => {
+          setIsStatusModalOpen(false);
+          setSelectedStatusPost(null);
+        }}
+        post={selectedStatusPost}
+        items={getStatusItemsForPost(selectedStatusPost)}
+        onRetryChannel={handleRetryChannelOnPost}
+        onDeletePost={handleDeletePost}
+      />
 
       {/* Settings Modal */}
       <SettingsModal

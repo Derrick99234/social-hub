@@ -143,7 +143,13 @@ export const repository = {
     if (supabase && isSupabaseConfigured()) {
       try {
         const { error } = await supabase.from('posts').delete().eq('id', id);
-        if (!error) return true;
+        if (!error) {
+          const postIndex = global.__memoryStore!.posts.findIndex((p) => p.id === id);
+          if (postIndex !== -1) {
+            global.__memoryStore!.posts.splice(postIndex, 1);
+          }
+          return true;
+        }
       } catch (err) {
         console.warn('Supabase deletePost error:', err);
       }

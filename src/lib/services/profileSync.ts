@@ -6,6 +6,8 @@ import path from 'path';
 declare global {
   // eslint-disable-next-line no-var
   var __cachedProfiles: SocialProfile[] | undefined;
+  // eslint-disable-next-line no-var
+  var __channelTokenMap: Record<string, string> | undefined;
 }
 
 export async function fetchLiveSocialProfiles(customKeys?: {
@@ -140,6 +142,10 @@ export async function fetchLiveSocialProfiles(customKeys?: {
               } else {
                 continue;
               }
+
+              // Cache token mapping for this channel ID
+              if (!global.__channelTokenMap) global.__channelTokenMap = {};
+              global.__channelTokenMap[ch.id] = token;
 
               // Check if already in list
               if (!discoveredProfiles.some((p) => p.id === ch.id)) {

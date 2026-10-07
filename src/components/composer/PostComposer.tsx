@@ -13,17 +13,20 @@ import {
   Eye,
   Edit3,
   RotateCw,
+  Trash2,
 } from 'lucide-react';
 import { PlatformId, Post, SocialProfile } from '@/types';
 import { MediaUploader } from './MediaUploader';
 import { LivePreview } from '../preview/LivePreview';
 import { PublishProfilesModal } from './PublishProfilesModal';
+import { DispatchStatusModal, ChannelStatusItem } from './DispatchStatusModal';
 
 interface PostComposerProps {
   initialPost?: Partial<Post> | null;
   onPostDispatched?: () => void;
   onSavedDraft?: () => void;
   onClose?: () => void;
+  onDeletePost?: (id: string) => Promise<void>;
   userRole?: 'founder' | 'marketer';
 }
 
@@ -32,6 +35,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   onPostDispatched,
   onSavedDraft,
   onClose,
+  onDeletePost,
   userRole = 'marketer',
 }) => {
   const [content, setContent] = useState(initialPost?.content || '');
@@ -53,6 +57,12 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('editor');
+
+  // Real-time dispatch status modal states
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [statusModalItems, setStatusModalItems] = useState<ChannelStatusItem[]>([]);
+  const [isStatusGlobalLoading, setIsStatusGlobalLoading] = useState(false);
+  const [activeDispatchedPost, setActiveDispatchedPost] = useState<Post | null>(null);
 
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error' | 'info';
@@ -132,12 +142,6 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   // Step 2: User selects profiles and clicks "Confirm & Publish"
   const handleConfirmPublishProfiles = async (selectedProfiles: SocialProfile[]) => {
     setIsSubmitting(true);
-    setStatusMessage({
-      type: 'info',
-      text: isScheduling
-        ? `⏰ Forward-scheduling across ${selectedProfiles.length} profile(s)...`
-        : `🚀 Dispatching to ${selectedProfiles.length} profile(s)...`,
-    });
 
     const targetChannels: PlatformId[] = Array.from(
       new Set(selectedProfiles.map((p) => p.network))
@@ -147,6 +151,22 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     if (isScheduling && scheduledDate) {
       scheduledAt = new Date(`${scheduledDate}T${scheduledTime || '09:00'}:00`).toISOString();
     }
+
+    // Initialize the live clean status modal
+    const initialItems: ChannelStatusItem[] = selectedProfiles.map((p) => ({
+      channel: p.network,
+      profileId: p.id,
+      name: p.name,
+      handle: p.handle,
+      avatarUrl: p.avatarUrl,
+      service: p.service,
+      status: 'loading',
+    }));
+
+    setIsProfileModalOpen(false);
+    setStatusModalItems(initialItems);
+    setIsStatusGlobalLoading(true);
+    setIsStatusModalOpen(true);
 
     try {
       const res = await fetch('/api/publish', {
@@ -166,37 +186,140 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to dispatch post');
+      setIsStatusGlobalLoading(false);
+
+      if (data.post) {
+        setActiveDispatchedPost(data.post);
       }
 
-      const channelDetails = data.dispatchResults?.map((r: { channel: string; service: string; status: string }) =>
-        `• ${r.channel.toUpperCase()}: ${r.status} (${r.service})`
-      ) || [];
-
-      setIsProfileModalOpen(false);
-
-      setStatusMessage({
-        type: 'success',
-        text: data.message || `Post dispatched to ${selectedProfiles.length} profile(s)!`,
-        details: channelDetails,
-      });
+      if (data.dispatchResults && Array.isArray(data.dispatchResults)) {
+        setStatusModalItems((prev) =>
+          prev.map((item) => {
+            const match = data.dispatchResults.find(
+              (r: any) =>
+                (r.profileId && r.profileId === item.profileId) ||
+                r.channel === item.channel
+            );
+            if (match) {
+              return {
+                ...item,
+                status: match.success ? 'success' : 'failed',
+                error: match.error,
+                externalUrl: match.externalUrl,
+                externalId: match.externalId,
+              };
+            }
+            return item;
+          })
+        );
+      } else if (!res.ok) {
+        setStatusModalItems((prev) =>
+          prev.map((item) => ({
+            ...item,
+            status: 'failed',
+            error: data.error || 'Failed to dispatch post',
+          }))
+        );
+      }
 
       if (onPostDispatched) {
         onPostDispatched();
       }
-
-      if (onClose) {
-        setTimeout(() => {
-          onClose();
-        }, 1200);
-      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown dispatch error';
-      setStatusMessage({ type: 'error', text: message });
+      setIsStatusGlobalLoading(false);
+      setStatusModalItems((prev) =>
+        prev.map((item) => ({
+          ...item,
+          status: 'failed',
+          error: message,
+        }))
+      );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Channel Retry Handler
+  const handleRetryChannel = async (item: ChannelStatusItem) => {
+    try {
+      setStatusModalItems((prev) =>
+        prev.map((it) =>
+          it.profileId === item.profileId && it.channel === item.channel
+            ? { ...it, status: 'loading', error: undefined }
+            : it
+        )
+      );
+
+      let scheduledAt: string | null = null;
+      if (isScheduling && scheduledDate) {
+        scheduledAt = new Date(`${scheduledDate}T${scheduledTime || '09:00'}:00`).toISOString();
+      }
+
+      const res = await fetch('/api/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: activeDispatchedPost?.id || initialPost?.id,
+          title: title || content.slice(0, 40),
+          content,
+          channels: [item.channel],
+          scheduledAt,
+          mediaUrls,
+          profileIds: item.profileId ? [item.profileId] : [],
+          authorRole: userRole,
+          authorName: userRole === 'founder' ? 'Founder' : 'Marketer',
+        }),
+      });
+
+      const data = await res.json();
+      const match = data.dispatchResults?.[0];
+
+      setStatusModalItems((prev) =>
+        prev.map((it) => {
+          if (it.profileId === item.profileId && it.channel === item.channel) {
+            return {
+              ...it,
+              status: match?.success ? 'success' : 'failed',
+              error: match?.error || (!res.ok ? data.error || 'Retry failed' : undefined),
+              externalUrl: match?.externalUrl,
+              externalId: match?.externalId,
+            };
+          }
+          return it;
+        })
+      );
+
+      if (onPostDispatched) {
+        onPostDispatched();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Retry failed';
+      setStatusModalItems((prev) =>
+        prev.map((it) =>
+          it.profileId === item.profileId && it.channel === item.channel
+            ? { ...it, status: 'failed', error: msg }
+            : it
+        )
+      );
+    }
+  };
+
+  // Delete Current Post Handler
+  const handleDeleteCurrentPost = async (postIdToDelete?: string) => {
+    const targetId = postIdToDelete || activeDispatchedPost?.id || initialPost?.id;
+    if (!targetId) return;
+
+    if (onDeletePost) {
+      await onDeletePost(targetId);
+    } else {
+      await fetch(`/api/posts/${targetId}`, { method: 'DELETE' });
+    }
+
+    if (onPostDispatched) onPostDispatched();
+    if (onSavedDraft) onSavedDraft();
+    setIsStatusModalOpen(false);
+    if (onClose) onClose();
   };
 
   // Save as Draft
@@ -468,15 +591,30 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
               {/* Primary Action Buttons */}
               <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleSaveDraft}
-                  disabled={isSubmitting}
-                  className="px-4 py-2.5 rounded-xl border border-slate-700 hover:border-slate-600 bg-slate-900/80 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save as Draft</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveDraft}
+                    disabled={isSubmitting}
+                    className="px-4 py-2.5 rounded-xl border border-slate-700 hover:border-slate-600 bg-slate-900/80 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2 transition-all disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Save as Draft</span>
+                  </button>
+
+                  {initialPost?.id && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCurrentPost()}
+                      disabled={isSubmitting}
+                      className="px-3.5 py-2.5 rounded-xl border border-rose-900/40 hover:border-rose-700/60 bg-rose-950/20 hover:bg-rose-950/40 text-rose-400 font-medium text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+                      title="Delete this post"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                </div>
 
                 <div className="flex items-center gap-3">
                   {isScheduling ? (
@@ -540,6 +678,21 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         scheduledDate={scheduledDate}
         scheduledTime={scheduledTime}
         isSubmitting={isSubmitting}
+      />
+
+      {/* Real-time Dispatch Status Modal */}
+      <DispatchStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => {
+          setIsStatusModalOpen(false);
+          if (onClose) onClose();
+        }}
+        post={activeDispatchedPost || (initialPost as Post) || null}
+        items={statusModalItems}
+        isGlobalLoading={isStatusGlobalLoading}
+        onRetryChannel={handleRetryChannel}
+        onDeletePost={handleDeleteCurrentPost}
+        isScheduling={isScheduling}
       />
     </>
   );

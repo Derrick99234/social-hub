@@ -85,9 +85,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Update the post status
-    const finalStatus: PostStatus = hasFailure && dispatchResults.every((r) => !r.success)
-      ? 'failed'
-      : initialStatus;
+    const allFailed = dispatchResults.length > 0 && dispatchResults.every((r) => !r.success);
+    const finalStatus: PostStatus = allFailed ? 'failed' : initialStatus;
 
     const updatedPost = await repository.updatePost(activePost.id, {
       status: finalStatus,
@@ -99,15 +98,24 @@ export async function POST(request: NextRequest) {
       media_urls: mediaUrls,
     });
 
+    let message = '';
+    if (allFailed) {
+      message = 'Dispatch failed across all selected channels';
+    } else if (hasFailure) {
+      message = 'Dispatched with some channel issues';
+    } else {
+      message = isScheduling
+        ? `Successfully scheduled post across ${channels.length} channel(s)`
+        : `Successfully dispatched post across ${channels.length} channel(s)`;
+    }
+
     return NextResponse.json({
       success: !hasFailure,
       partialSuccess: hasFailure && dispatchResults.some((r) => r.success),
       post: updatedPost || activePost,
       dispatchResults,
       logs: savedLogs,
-      message: isScheduling
-        ? `Successfully scheduled post across ${channels.length} channel(s)`
-        : `Successfully dispatched post across ${channels.length} channel(s)`,
+      message,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown dispatch error';

@@ -181,9 +181,12 @@ export const ContentQueue: React.FC<ContentQueueProps> = ({
                     </div>
                   )}
 
-                  <div className="space-y-1.5 min-w-0 flex-1">
+                  <div 
+                    onClick={() => onEditPost(post)}
+                    className="space-y-1.5 min-w-0 flex-1 cursor-pointer"
+                  >
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <h4 className="font-semibold text-sm text-white truncate max-w-sm">
+                      <h4 className="font-semibold text-sm text-white truncate max-w-sm group-hover:text-blue-300 transition-colors">
                         {post.title || post.content.slice(0, 45)}
                       </h4>
                       {getStatusBadge(post.status)}

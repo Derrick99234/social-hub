@@ -399,32 +399,48 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {/* If selected day has posts, list them cleanly */}
           {selectedDayPosts.length > 0 && (
             <div className="space-y-2">
-              {selectedDayPosts.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => onSelectPost(p)}
-                  className="p-3.5 glass-card rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center justify-between gap-3 transition-all"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-xs text-white truncate">
-                        {p.title || p.content.slice(0, 45)}
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 uppercase">
-                        {p.status}
+              {selectedDayPosts.map((p) => {
+                const isSent = p.status === 'published';
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => onSelectPost(p)}
+                    className="p-3.5 glass-card rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer flex items-center justify-between gap-3 transition-all group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {p.channels.map((c) => (
+                          <span
+                            key={c}
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: PLATFORMS[c]?.color || '#3b82f6' }}
+                            title={PLATFORMS[c]?.name}
+                          />
+                        ))}
+                        <span className="font-semibold text-xs text-white truncate">
+                          {p.title || p.content.slice(0, 45)}
+                        </span>
+                        {p.scheduled_at && (
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(p.scheduled_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 line-clamp-1">{p.content}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-blue-400 group-hover:text-blue-300 flex items-center gap-1 font-medium transition-colors">
+                        <span>{isSent ? 'View Status' : 'Edit Schedule'}</span>
+                        <Send className="w-3 h-3" />
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 line-clamp-1">{p.content}</p>
                   </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs text-blue-400 hover:underline flex items-center gap-1 font-medium">
-                      <span>Edit</span>
-                      <Send className="w-3 h-3" />
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

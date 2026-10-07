@@ -11,6 +11,7 @@ interface DispatchOptions {
 
 export interface DispatchResult {
   channel: PlatformId;
+  profileId?: string;
   service: 'typefully' | 'buffer';
   success: boolean;
   status: 'success' | 'failed' | 'simulated';
@@ -22,12 +23,43 @@ export interface DispatchResult {
 }
 
 /**
+ * Resolves the appropriate Buffer token for a given channel/profile ID
+ */
+async function getBufferTokenForChannel(channelId?: string): Promise<string> {
+  const allTokens = (process.env.BUFFER_ACCESS_TOKENS || process.env.BUFFER_ACCESS_TOKEN || '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  if (allTokens.length <= 1) return allTokens[0] || '';
+  if (!channelId) return allTokens[0];
+
+  // 1. Check memory cache populated by profileSync
+  if (global.__channelTokenMap && global.__channelTokenMap[channelId]) {
+    return global.__channelTokenMap[channelId];
+  }
+
+  // 2. Known mapping fallback based on verified account structures
+  const token2Channels = [
+    '6a70883699afb44349f2872f', // OneRep Facebook
+    '6a180d02c687a22dd43511fe', // onerep_ai Twitter
+    '6a180cc3c687a22dd4351153', // onerepai Instagram
+  ];
+  if (token2Channels.includes(channelId) && allTokens[1]) {
+    return allTokens[1];
+  }
+
+  return allTokens[0];
+}
+
+/**
  * Dispatches content to Typefully API v2 (handles X / Twitter & Threads)
  */
 async function dispatchToTypefully(
   content: string,
   scheduledAt?: string | null,
-  channels: PlatformId[] = ['twitter']
+  channels: PlatformId[] = ['twitter'],
+  profileIds?: string[]
 ): Promise<DispatchResult[]> {
   const apiKey = process.env.TYPEFULLY_API_KEY;
   const isSimulated = !apiKey || apiKey.includes('your_') || apiKey.trim() === '';
@@ -39,8 +71,10 @@ async function dispatchToTypefully(
 
   if (isSimulated) {
     for (const channel of targetChannels) {
+      const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
       results.push({
         channel,
+        profileId: matchedProfileId,
         service: 'typefully',
         success: true,
         status: 'simulated',
@@ -73,7 +107,7 @@ async function dispatchToTypefully(
     }
 
     if (!socialSetId) {
-      socialSetId = '340219'; // Fallback to discovered user set ID
+      socialSetId = '340219'; // Fallback to verified user social set ID
     }
 
     // 2. Prepare payload for Typefully v2
@@ -91,10 +125,13 @@ async function dispatchToTypefully(
       };
     }
 
-    const payload: Record<string, unknown> = { platforms };
-    if (scheduledAt) {
-      payload.scheduled_date = new Date(scheduledAt).toISOString();
-    }
+    // Typefully v2 publish directive:
+    // publish_at: "now" triggers immediate posting.
+    // publish_at: "<ISO string>" triggers scheduled auto-publish.
+    const payload: Record<string, unknown> = {
+      platforms,
+      publish_at: scheduledAt ? new Date(scheduledAt).toISOString() : 'now',
+    };
 
     const res = await fetch(`https://api.typefully.com/v2/social-sets/${socialSetId}/drafts`, {
       method: 'POST',
@@ -108,24 +145,36 @@ async function dispatchToTypefully(
     const responseData = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      const errorMessage =
+        responseData?.error?.message ||
+        responseData?.message ||
+        `Typefully HTTP ${res.status}: ${res.statusText}`;
+
       for (const channel of targetChannels) {
+        const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
         results.push({
           channel,
+          profileId: matchedProfileId,
           service: 'typefully',
           success: false,
           status: 'failed',
-          error: responseData?.error?.message || `Typefully HTTP ${res.status}: ${res.statusText}`,
+          error: errorMessage,
           payloadSent: payload,
           responseReceived: responseData,
         });
       }
     } else {
       const draftId = responseData?.id?.toString() || `tf_${Date.now()}`;
-      const draftUrl = responseData?.private_url || `https://typefully.com/?d=${draftId}&a=${socialSetId}`;
+      const draftUrl =
+        responseData?.x_published_url ||
+        responseData?.private_url ||
+        `https://typefully.com/?d=${draftId}&a=${socialSetId}`;
 
       for (const channel of targetChannels) {
+        const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
         results.push({
           channel,
+          profileId: matchedProfileId,
           service: 'typefully',
           success: true,
           status: 'success',
@@ -139,8 +188,10 @@ async function dispatchToTypefully(
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown Typefully network error';
     for (const channel of targetChannels) {
+      const matchedProfileId = profileIds?.find((id) => id.includes(`tf_${channel}`));
       results.push({
         channel,
+        profileId: matchedProfileId,
         service: 'typefully',
         success: false,
         status: 'failed',
@@ -153,7 +204,7 @@ async function dispatchToTypefully(
 }
 
 /**
- * Dispatches content to Buffer GraphQL API (handles LinkedIn & Instagram)
+ * Dispatches content to Buffer GraphQL API (handles LinkedIn, Instagram, etc.)
  */
 async function dispatchToBuffer(
   content: string,
@@ -162,24 +213,44 @@ async function dispatchToBuffer(
   channels: PlatformId[] = ['linkedin'],
   profileIds?: string[]
 ): Promise<DispatchResult[]> {
-  const token = process.env.BUFFER_ACCESS_TOKEN;
   const linkedinProfileId = process.env.BUFFER_LINKEDIN_PROFILE_ID;
   const instagramProfileId = process.env.BUFFER_INSTAGRAM_PROFILE_ID;
 
-  const isSimulated = !token || token.includes('your_') || token.trim() === '';
-  const results: DispatchResult[] = [];
   const targetChannels = channels.filter((c) => c === 'linkedin' || c === 'instagram');
+  const results: DispatchResult[] = [];
 
-  for (const channel of targetChannels) {
-    // Check if an explicit profile ID was selected by the user for this Buffer channel
-    let profileId = profileIds?.find((id) => id.length === 24 && !id.startsWith('tf_'));
-    if (!profileId) {
-      profileId = channel === 'linkedin' ? linkedinProfileId : instagramProfileId;
+  // Determine all target Buffer profile IDs
+  // If user selected explicit profiles from the modal, use all matching Buffer profiles (length 24)
+  const bufferProfileIds = (profileIds || []).filter((id) => id.length === 24 && !id.startsWith('tf_'));
+
+  const dispatchTargets: Array<{ profileId: string; channel: PlatformId }> = [];
+
+  if (bufferProfileIds.length > 0) {
+    for (const pId of bufferProfileIds) {
+      // Find channel type if known, default based on targetChannels
+      const channelType = targetChannels.find((c) => c === 'instagram') ? 'instagram' : 'linkedin';
+      dispatchTargets.push({ profileId: pId, channel: channelType });
     }
+  } else {
+    for (const channel of targetChannels) {
+      const fallbackId = channel === 'linkedin' ? linkedinProfileId : instagramProfileId;
+      if (fallbackId) {
+        dispatchTargets.push({ profileId: fallbackId, channel });
+      }
+    }
+  }
+
+  if (dispatchTargets.length === 0) return results;
+
+  for (const target of dispatchTargets) {
+    const { profileId, channel } = target;
+    const token = await getBufferTokenForChannel(profileId);
+    const isSimulated = !token || token.includes('your_') || token.trim() === '';
 
     if (isSimulated || !profileId || profileId.includes('your_')) {
       results.push({
         channel,
+        profileId,
         service: 'buffer',
         success: true,
         status: 'simulated',
@@ -218,16 +289,25 @@ async function dispatchToBuffer(
         }
       `;
 
+      // Buffer GraphQL CreatePostInput requirements:
+      // - schedulingType: "automatic"
+      // - needsApproval: false
+      // - mode: "customScheduled" | "shareNow"
+      // - assets: [{ image: { url } }]
       const inputPayload: Record<string, unknown> = {
         channelId: profileId,
         text: content,
+        schedulingType: 'automatic',
+        needsApproval: false,
         mode: scheduledAt ? 'customScheduled' : 'shareNow',
         dueAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
         saveToDraft: false,
       };
 
       if (mediaUrls && mediaUrls.length > 0) {
-        inputPayload.assets = mediaUrls.map((url) => ({ url }));
+        inputPayload.assets = mediaUrls.map((url) => ({
+          image: { url },
+        }));
       }
 
       const res = await fetch('https://api.buffer.com/graphql', {
@@ -251,6 +331,7 @@ async function dispatchToBuffer(
           `Buffer GraphQL HTTP ${res.status}: ${res.statusText}`;
         results.push({
           channel,
+          profileId,
           service: 'buffer',
           success: false,
           status: 'failed',
@@ -261,6 +342,7 @@ async function dispatchToBuffer(
       } else if (payloadData?.post?.id) {
         results.push({
           channel,
+          profileId,
           service: 'buffer',
           success: true,
           status: 'success',
@@ -274,6 +356,7 @@ async function dispatchToBuffer(
           payloadData?.message || 'Buffer did not return a created post ID';
         results.push({
           channel,
+          profileId,
           service: 'buffer',
           success: false,
           status: 'failed',
@@ -286,6 +369,7 @@ async function dispatchToBuffer(
       const errorMessage = err instanceof Error ? err.message : 'Unknown Buffer network error';
       results.push({
         channel,
+        profileId,
         service: 'buffer',
         success: false,
         status: 'failed',
@@ -310,8 +394,12 @@ export async function executeMultiChannelDispatch(options: DispatchOptions): Pro
   const bufferChannels = channels.filter((c) => c === 'linkedin' || c === 'instagram');
 
   const [typefullyResults, bufferResults] = await Promise.all([
-    typefullyChannels.length > 0 ? dispatchToTypefully(content, scheduledAt, typefullyChannels) : Promise.resolve([]),
-    bufferChannels.length > 0 ? dispatchToBuffer(content, scheduledAt, mediaUrls, bufferChannels, profileIds) : Promise.resolve([]),
+    typefullyChannels.length > 0
+      ? dispatchToTypefully(content, scheduledAt, typefullyChannels, profileIds)
+      : Promise.resolve([]),
+    bufferChannels.length > 0
+      ? dispatchToBuffer(content, scheduledAt, mediaUrls, bufferChannels, profileIds)
+      : Promise.resolve([]),
   ]);
 
   return [...typefullyResults, ...bufferResults];
