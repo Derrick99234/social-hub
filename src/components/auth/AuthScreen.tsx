@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, KeyRound } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, KeyRound, Briefcase, Megaphone } from 'lucide-react';
 
 interface AuthScreenProps {
   onSuccess: (role: string) => void;
@@ -79,24 +79,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess }) => {
             <button
               type="button"
               onClick={() => setRole('marketer')}
-              className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+              className={`py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                 role === 'marketer'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🚀 Digital Marketer
+              <Megaphone className="w-3.5 h-3.5" />
+              <span>Digital Marketer</span>
             </button>
             <button
               type="button"
               onClick={() => setRole('founder')}
-              className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+              className={`py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                 role === 'founder'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              👔 Founder / Exec
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>Founder / Exec</span>
             </button>
           </div>
         </div>

@@ -625,7 +625,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                       className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-medium text-xs shadow-lg shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
                     >
                       <Calendar className="w-4 h-4" />
-                      <span>⏰ Schedule Ahead...</span>
+                      <span>Schedule Ahead</span>
                     </button>
                   ) : (
                     <button
@@ -635,7 +635,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                       className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
                     >
                       <Send className="w-4 h-4" />
-                      <span>🚀 Post Now...</span>
+                      <span>Post Now</span>
                     </button>
                   )}
                 </div>

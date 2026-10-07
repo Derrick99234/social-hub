@@ -9,6 +9,8 @@ import {
   Settings,
   LogOut,
   Plus,
+  Briefcase,
+  Megaphone,
 } from 'lucide-react';
 import { ServiceHealthStatus } from '@/types';
 
@@ -121,8 +123,8 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
                 title="Founder Mode: Quick ideas drop & review"
               >
-                <span>👔</span>
-                <span className="hidden sm:inline ml-1">Founder</span>
+                <Briefcase className="w-3.5 h-3.5 inline mr-1" />
+                <span className="hidden sm:inline">Founder</span>
               </button>
               <button
                 type="button"
@@ -134,8 +136,8 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
                 title="Marketer Mode: Full multi-platform scheduler"
               >
-                <span>🚀</span>
-                <span className="hidden sm:inline ml-1">Marketer</span>
+                <Megaphone className="w-3.5 h-3.5 inline mr-1" />
+                <span className="hidden sm:inline">Marketer</span>
               </button>
             </div>
 
