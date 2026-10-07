@@ -69,3 +69,47 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { url, path: inputPath } = body;
+
+    const bucketName = process.env.SUPABASE_STORAGE_BUCKET || 'media';
+    let storagePath = inputPath;
+
+    if (!storagePath && url && typeof url === 'string') {
+      // If it's a Supabase storage public URL, extract the relative path
+      // Pattern: .../storage/v1/object/public/{bucketName}/{path}
+      const marker = `/${bucketName}/`;
+      if (url.includes(marker)) {
+        storagePath = url.split(marker)[1];
+      } else if (url.includes('uploads/')) {
+        const match = url.match(/uploads\/[a-zA-Z0-9._-]+/);
+        if (match) storagePath = match[0];
+      }
+    }
+
+    if (storagePath) {
+      const supabase = getSupabaseServerClient();
+      if (supabase && isSupabaseConfigured()) {
+        const { error: removeError } = await supabase.storage
+          .from(bucketName)
+          .remove([storagePath]);
+
+        if (removeError) {
+          console.warn('Supabase storage remove error:', removeError.message);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Media deleted from storage',
+      path: storagePath || null,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown delete error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
