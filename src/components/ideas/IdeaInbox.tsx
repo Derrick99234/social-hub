@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Lightbulb,
   Plus,
   Sparkles,
   ArrowRight,
   Mic,
+  MicOff,
   Tag,
   Clock,
   Trash2,
   RefreshCw,
+  AlertCircle,
+  Radio,
 } from 'lucide-react';
 import { Idea } from '@/types';
 
@@ -30,8 +33,12 @@ export const IdeaInbox: React.FC<IdeaInboxProps> = ({
   const [rawText, setRawText] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>(['Growth']);
   const [isRecording, setIsRecording] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'inbox' | 'converted'>('all');
+
+  const recognitionRef = useRef<any>(null);
+  const baseTextRef = useRef<string>('');
 
   const availableTags = ['Growth', 'SaaS', 'Product', 'BehindTheScenes', 'Strategy', 'Hiring', 'CaseStudy'];
 
@@ -44,6 +51,10 @@ export const IdeaInbox: React.FC<IdeaInboxProps> = ({
   const handleDropIdea = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rawText.trim()) return;
+
+    if (isRecording) {
+      stopVoiceRecording();
+    }
 
     setIsSubmitting(true);
     try {
@@ -68,15 +79,97 @@ export const IdeaInbox: React.FC<IdeaInboxProps> = ({
     }
   };
 
-  const handleSimulateVoiceNote = () => {
-    setIsRecording(true);
-    setTimeout(() => {
-      setRawText(
-        'Voice memo transcription: We just crossed 10k users without spending any money on paid marketing. The secret was turning our release notes into storytelling threads on Twitter and carousel breakdowns on LinkedIn. We need to write up the step-by-step framework.'
+  // Real Speech-to-Text Voice Dictation via Web Speech API
+  const startVoiceRecording = () => {
+    setSpeechError(null);
+
+    const SpeechRecognition =
+      (typeof window !== 'undefined' &&
+        ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) ||
+      null;
+
+    if (!SpeechRecognition) {
+      setSpeechError(
+        'Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari for voice dictation.'
       );
+      return;
+    }
+
+    try {
+      baseTextRef.current = rawText;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + ' ';
+        }
+        const base = baseTextRef.current ? baseTextRef.current.trim() + ' ' : '';
+        setRawText(base + transcript.trim());
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          setSpeechError('Microphone permission was denied. Please allow microphone access in your browser settings.');
+        } else if (event.error !== 'no-speech') {
+          setSpeechError(`Voice error: ${event.error}`);
+        }
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not activate microphone';
+      setSpeechError(message);
       setIsRecording(false);
-    }, 1200);
+    }
   };
+
+  const stopVoiceRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // Ignore
+      }
+      recognitionRef.current = null;
+    }
+    setIsRecording(false);
+  };
+
+  const handleToggleVoiceRecording = () => {
+    if (isRecording) {
+      stopVoiceRecording();
+    } else {
+      startVoiceRecording();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // Ignore
+        }
+      }
+    };
+  }, []);
+
 
   const handleDeleteIdea = async (id: string) => {
     try {
@@ -162,13 +255,25 @@ export const IdeaInbox: React.FC<IdeaInboxProps> = ({
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 type="button"
-                onClick={handleSimulateVoiceNote}
-                disabled={isRecording}
-                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
-                title="Dictate or drop voice note transcript"
+                onClick={handleToggleVoiceRecording}
+                className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-2 transition-all ${
+                  isRecording
+                    ? 'border-rose-500 bg-rose-500/15 text-rose-300 shadow-lg shadow-rose-500/20 animate-pulse'
+                    : 'border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white'
+                }`}
+                title={isRecording ? 'Click to stop dictation' : 'Click to dictate thoughts into text'}
               >
-                <Mic className={`w-3.5 h-3.5 ${isRecording ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} />
-                <span>{isRecording ? 'Listening...' : 'Voice Note'}</span>
+                {isRecording ? (
+                  <>
+                    <MicOff className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Stop Recording</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Voice Note</span>
+                  </>
+                )}
               </button>
 
               <button
@@ -181,6 +286,32 @@ export const IdeaInbox: React.FC<IdeaInboxProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Live Voice Recording Status Feedback */}
+          {isRecording && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <span>Listening to microphone... Speak clearly to dictate your idea live.</span>
+            </div>
+          )}
+
+          {/* Speech Error Banner */}
+          {speechError && (
+            <div className="mt-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span>{speechError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSpeechError(null)}
+                className="text-amber-400 hover:text-amber-200 text-xs px-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
         </form>
       </div>
 
